@@ -4,9 +4,9 @@
 //!    A. Variable names should be in all lowercase.
 //!       If the name is composed of more than one word, then underscores
 //!       must be used to separate them.
-//! 
+//!
 //!       Example: int temperature = 0;
-//! 
+//!
 //!       Example: int room_temperature = 0;
 //! ```
 //!

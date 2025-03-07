@@ -3,8 +3,8 @@ use std::process::ExitCode;
 use crate::rules::api::Rule;
 use tree_sitter::{Language, Parser, Query, QueryCaptures, QueryCursor, StreamingIterator, Tree};
 
-mod rules;
-mod helpers;
+pub mod rules;
+pub mod helpers;
 
 fn usage() {
     let maybe_argv0: Option<String> = std::env::args().nth(0);

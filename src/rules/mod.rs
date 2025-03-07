@@ -1,6 +1,8 @@
-mod rule1a;
-mod rule1c;
 pub mod api;
+pub mod rule1a;
+pub mod rule1b;
+pub mod rule1c;
+pub mod rule1d;
 
 use self::api::Rule;
 

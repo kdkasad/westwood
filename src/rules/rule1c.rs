@@ -1,11 +1,11 @@
-//! # Rule 1:C
+//! # Rule I:C
 //!
 //! ```text
 //! C. All constants must be all uppercase, and contain at least two
 //!   characters.  Constants must be declared using #define.
-//!   A constant numeric value assigned must be enclosed in 
+//!   A constant numeric value assigned must be enclosed in
 //!   parenthesis.
-//!   
+//!
 //!   String constants need to be placed in quotes but do not
 //!   have surrounding parentheses.
 //!
@@ -45,6 +45,9 @@ const QUERY_STR: &'static str = r#"
     )
 "#;
 
+/// # Rule I:C.
+///
+/// See module-level documentation for details.
 pub struct Rule1c {}
 
 impl Rule for Rule1c {
