@@ -66,30 +66,44 @@ pub struct Rule1d {}
 impl Rule for Rule1d {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
-        let mut after_function = false;
+        let mut first_function_position = None;
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
             // For captures that aren't problems, process them as needed and return
             match name {
                 "function" => {
-                    after_function = true;
+                    first_function_position = Some(capture.node.byte_range());
                     return;
                 }
-                "declaration.top_level" if after_function => (),
+                "declaration.top_level" if first_function_position.is_some() => (),
                 "declaration.top_level" => return,
                 _ => (),
             }
-            let message: &str = match name {
-                "global.no_g_prefix" => "Global variables must be prefixed with \"g_\"",
+            let diagnostic = match name {
+                "global.no_g_prefix" => {
+                    let message = "Global variables must be prefixed with \"g_\"";
+                    Diagnostic::warning()
+                        .with_code("I:D")
+                        .with_message(message)
+                        .with_labels(vec![Label::primary((), capture.node.byte_range())
+                            .with_message("Declaration occurs here")])
+                }
                 "declaration.top_level" => {
-                    "All top-level declarations must come before function definitions"
+                    let message =
+                        "All top-level declarations must come before function definitions";
+                    Diagnostic::warning()
+                        .with_code("I:D")
+                        .with_message(message)
+                        .with_labels(vec![
+                            Label::primary((), capture.node.byte_range())
+                                .with_message("Declaration occurs here"),
+                            // SAFETY: We will have returned if first_function_position is None.
+                            Label::secondary((), first_function_position.as_ref().unwrap().clone())
+                                .with_message("First function defined here"),
+                        ])
                 }
                 _ => unreachable!(),
             };
-            let diagnostic = Diagnostic::warning()
-                .with_code("I:D")
-                .with_message(message)
-                .with_labels(vec![Label::primary((), capture.node.byte_range())]);
             diagnostics.push(diagnostic);
         });
         diagnostics
