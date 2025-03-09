@@ -126,7 +126,7 @@ mod test {
 
     #[test]
     fn test_has_ancestor() {
-        let input = r#"
+        let input = /* c */ r#"
 int a;
     //!? outfunc
 int b = 0;
@@ -145,7 +145,7 @@ int func() {
     }
 }
 "#;
-        let query = r#";tsquery
+        let query = /* query */ r#"
             ((identifier) @infunc
                 (#has-ancestor? @infunc function_definition))
             ((identifier) @outfunc

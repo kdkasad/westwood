@@ -29,8 +29,7 @@ use tree_sitter::{Point, QueryCapture, Tree};
 use crate::{rules::api::Rule, helpers::QueryHelper};
 
 /// Tree-sitter query for Rule I:C.
-const QUERY_STR: &'static str = r#"
-    ; tsquery
+const QUERY_STR: &'static str = /* query */ r#"
     (
         (preproc_def name: (identifier) @constant.name.short)
         (#match? @constant.name.short "^.$")

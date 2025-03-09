@@ -20,8 +20,7 @@ use tree_sitter::{Query, QueryCapture, QueryCursor, StreamingIterator as _, Tree
 
 use crate::rules::api::Rule;
 
-const QUERY_STR: &'static str = r#"
-    ; tsquery
+const QUERY_STR: &'static str = /* query */ r#"
     (
         (_ declarator: (identifier) @name)
         (#match? @name "[A-Z]")
