@@ -1,7 +1,12 @@
 [package]
 name = "westwood"
-version = "0.1.0"
+version = "0.0.0"
+description = "A linter for Purdue's CS 240 course"
+repository = "https://github.com/kdkasad/westwood"
+license = "Apache-2.0"
+authors = ["Kian Kasad <kian@kasad.com>"]
 edition = "2021"
+exclude = ["/.nvim*", "/.github/"]
 
 [build-dependencies]
 cc = "*"
