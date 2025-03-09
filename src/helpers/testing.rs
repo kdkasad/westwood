@@ -87,7 +87,9 @@ pub fn test_captures(query: &str, input: &str) {
 
     // Run query on code
     let mut parser = Parser::new();
-    parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+    parser
+        .set_language(&tree_sitter_c::LANGUAGE.into())
+        .unwrap();
     let tree = parser.parse(&code, None).unwrap();
     let helper = QueryHelper::new(query, &tree, code.as_bytes());
     helper.for_each_capture(|label, capture| {
@@ -99,10 +101,16 @@ pub fn test_captures(query: &str, input: &str) {
                     test_specs.remove(&(start.row, start.column));
                 }
             } else {
-                panic!("Unexpected match for @{} at row {} column {}", label, start.row, start.column);
+                panic!(
+                    "Unexpected match for @{} at row {} column {}",
+                    label, start.row, start.column
+                );
             }
         } else {
-            panic!("Unexpected match for @{} at row {} column {}", label, start.row, start.column);
+            panic!(
+                "Unexpected match for @{} at row {} column {}",
+                label, start.row, start.column
+            );
         }
     });
     for ((row, col), set) in test_specs {

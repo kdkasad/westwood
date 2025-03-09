@@ -27,7 +27,7 @@
 use indoc::indoc;
 use tree_sitter::{Point, QueryCapture, Tree};
 
-use crate::{rules::api::Rule, helpers::QueryHelper};
+use crate::{helpers::QueryHelper, rules::api::Rule};
 
 /// Tree-sitter query for Rule I:C.
 const QUERY_STR: &'static str = indoc! { /* query */ r#"
