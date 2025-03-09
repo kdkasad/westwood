@@ -16,6 +16,7 @@
 use std::process::ExitCode;
 
 use crate::rules::api::Rule;
+use codespan_reporting::{files::SimpleFile, term::{self, termcolor::{ColorChoice, StandardStream}}};
 use tree_sitter::{Parser, Tree};
 
 pub mod helpers;
@@ -45,7 +46,7 @@ fn main() -> ExitCode {
     }
 
     // Read file
-    let code: Vec<u8> = match std::fs::read(&filename) {
+    let code: String = match std::fs::read_to_string(&filename) {
         Ok(contents) => contents,
         Err(err) => {
             eprintln!("Error: Cannot read {}: {}", filename, err);
@@ -70,10 +71,18 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    // Create diagnostic writer & file source
+    let writer = StandardStream::stdout(ColorChoice::Auto);
+    let config = term::Config::default();
+    let files = SimpleFile::new(&filename, &code);
+
     // Do checks
     let rules: Vec<Box<dyn Rule>> = crate::rules::get_rules();
     for rule in rules {
-        rule.check(&filename, &tree, &code);
+        let diagnostics = rule.check(&tree, code.as_bytes());
+        for diagnostic in diagnostics {
+            term::emit(&mut writer.lock(), &config, &files, &diagnostic).expect("Failed to write diagnostic");
+        }
     }
 
     return ExitCode::SUCCESS;

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! # Rule I:C
 //!
 //! ```text
@@ -39,8 +38,9 @@
 //!   `#define ABC 1 + 2` doesn't. Fixing this will require re-parsing all `preproc_arg` nodes, as
 //!   the current [tree-sitter-c][tree_sitter_c] grammar treats them as literal text.
 
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Point, QueryCapture, Tree};
+use tree_sitter::{QueryCapture, Tree};
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
@@ -66,20 +66,33 @@ const QUERY_STR: &'static str = indoc! { /* query */ r#"
 pub struct Rule1c {}
 
 impl Rule for Rule1c {
-    fn check(&self, filename: &str, tree: &Tree, code: &[u8]) {
+    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
+        let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
-            let message: &str = match name {
-                "constant.name.short" => "Constant name must contain at least 2 characters",
-                "constant.name.contains_lower" => "Constant name must use upper snake case",
-                "constant.value.unwrapped_number" => {
-                    "Numeric constant value must be wrapped in parentheses"
-                }
+            let (message, label) = match name {
+                "constant.name.short" => (
+                    "Constant name must contain at least 2 characters",
+                    "Constant defined here",
+                ),
+                "constant.name.contains_lower" => (
+                    "Constant name must use upper snake case",
+                    "Constant defined here",
+                ),
+                "constant.value.unwrapped_number" => (
+                    "Numeric constant value must be wrapped in parentheses",
+                    "Value defined here",
+                ),
                 _ => unreachable!(),
             };
-            let loc: Point = capture.node.start_position();
-            println!("{}:{}:{}: {}", filename, loc.row, loc.column, message);
-            println!("{}", capture.node.utf8_text(code).unwrap());
+            let diagnostic = Diagnostic::warning()
+                .with_code("I:C")
+                .with_message(message)
+                .with_labels(vec![
+                    Label::primary((), capture.node.byte_range()).with_message(label)
+                ]);
+            diagnostics.push(diagnostic);
         });
+        diagnostics
     }
 }

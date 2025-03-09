@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! # Rule I:A
 //!
 //! ```text
@@ -31,6 +30,7 @@
 //! underscores are used to separate words because splitting an identifier into words is
 //! subjective.
 
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::Tree;
 
@@ -49,18 +49,24 @@ const QUERY_STR: &'static str = indoc! { /* query */ r#"
 pub struct Rule1a {}
 
 impl Rule for Rule1a {
-    fn check(&self, filename: &str, tree: &Tree, code: &[u8]) {
+    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
+        let mut diagnostics = Vec::new();
         helper.for_each_capture(|_label, capture| {
-            let start = capture.node.start_position();
-            let variable_name = capture
-                .node
-                .utf8_text(code)
-                .expect("Code is not valid UTF-8");
-            println!(
-                "{}:{}:{}: Name \"{}\" must be in lower snake case.",
-                filename, start.row, start.column, variable_name
-            );
+            let nametype = match capture.node.parent().unwrap().kind() {
+                "function_declarator" => "Function",
+                _ => "Variable",
+            };
+            let diagnostic = Diagnostic::warning()
+                .with_message("Identifier violates naming conventions")
+                .with_code("I:A")
+                .with_labels(vec![Label::primary((), capture.node.byte_range())
+                    .with_message(format!(
+                        "{} name contains uppercase character(s)",
+                        nametype
+                    ))]);
+            diagnostics.push(diagnostic);
         });
+        diagnostics
     }
 }

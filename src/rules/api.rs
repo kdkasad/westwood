@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! API for [rules][Rule].
 
+use codespan_reporting::diagnostic::Diagnostic;
 use tree_sitter::Tree;
 
 /// Represents a linter rule.
@@ -26,5 +26,5 @@ pub trait Rule {
     /// - `filename`: Name of the file being checked.
     /// - `tree`: [`Tree`] representing the file.
     /// - `code`: Text/code of the given file.
-    fn check(&self, filename: &str, tree: &Tree, code: &[u8]);
+    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>>;
 }

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! # Rule I:D
 //!
 //! ```text
@@ -31,8 +30,9 @@
 //! I interpret that as meaning all declarations/definitions and not just global variable
 //! declarations.
 
+use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Point, QueryCapture, Tree};
+use tree_sitter::{QueryCapture, Tree};
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
@@ -64,9 +64,10 @@ const QUERY_STR: &'static str = indoc! {
 pub struct Rule1d {}
 
 impl Rule for Rule1d {
-    fn check(&self, filename: &str, tree: &Tree, code: &[u8]) {
+    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut after_function = false;
+        let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
             // For captures that aren't problems, process them as needed and return
             match name {
@@ -85,10 +86,13 @@ impl Rule for Rule1d {
                 }
                 _ => unreachable!(),
             };
-            let loc: Point = capture.node.start_position();
-            println!("{}:{}:{}: {}", filename, loc.row, loc.column, message);
-            println!("{}", capture.node.utf8_text(code).unwrap());
+            let diagnostic = Diagnostic::warning()
+                .with_code("I:D")
+                .with_message(message)
+                .with_labels(vec![Label::primary((), capture.node.byte_range())]);
+            diagnostics.push(diagnostic);
         });
+        diagnostics
     }
 }
 
