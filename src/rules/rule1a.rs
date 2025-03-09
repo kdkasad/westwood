@@ -17,9 +17,9 @@
 //! subjective.
 
 use indoc::indoc;
-use tree_sitter::{Query, QueryCapture, QueryCursor, StreamingIterator as _, Tree};
+use tree_sitter::Tree;
 
-use crate::rules::api::Rule;
+use crate::{helpers::QueryHelper, rules::api::Rule};
 
 const QUERY_STR: &'static str = indoc! { /* query */ r#"
     (
@@ -35,22 +35,17 @@ pub struct Rule1a {}
 
 impl Rule for Rule1a {
     fn check(&self, filename: &str, tree: &Tree, code: &[u8]) {
-        let query =
-            Query::new(&tree_sitter_c::LANGUAGE.into(), QUERY_STR).expect("Failed to create query");
-        let mut cursor = QueryCursor::new();
-        let mut captures = cursor.captures(&query, tree.root_node(), code);
-        while let Some((this_match, capture_index)) = captures.next() {
-            let capture: QueryCapture = this_match.captures[*capture_index];
+        let helper = QueryHelper::new(QUERY_STR, tree, code);
+        helper.for_each_capture(|_label, capture| {
+            let start = capture.node.start_position();
+            let variable_name = capture
+                .node
+                .utf8_text(code)
+                .expect("Code is not valid UTF-8");
             println!(
                 "{}:{}:{}: Name \"{}\" must be in lower snake case.",
-                filename,
-                capture.node.start_position().row,
-                capture.node.start_position().column,
-                capture
-                    .node
-                    .utf8_text(code)
-                    .expect("Code is not valid UTF-8")
+                filename, start.row, start.column, variable_name
             );
-        }
+        });
     }
 }
