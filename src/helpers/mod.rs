@@ -80,7 +80,6 @@ impl<'src> QueryHelper<'src> {
             (orig_op, false)
         };
 
-
         let result = match op {
             // Matches if any ancestor of the captured node is of the given kind
             "has-ancestor?" => {
@@ -91,7 +90,10 @@ impl<'src> QueryHelper<'src> {
                     // check if any of the nodes along the way are of the given kind.
                     let mut captured_nodes = qmatch.nodes_for_capture_index(*capture_index);
                     let target = captured_nodes.next().expect("Expected one captured node");
-                    assert!(captured_nodes.next().is_none(), "Expected no more than one captured node");
+                    assert!(
+                        captured_nodes.next().is_none(),
+                        "Expected no more than one captured node"
+                    );
                     let mut maybe_node = Some(self.tree.root_node());
                     let mut found = false;
                     while let Some(node) = maybe_node {
@@ -122,7 +124,10 @@ impl<'src> QueryHelper<'src> {
                     // check if any of the nodes along the way are of the given kind.
                     let mut captured_nodes = qmatch.nodes_for_capture_index(*capture_index);
                     let target = captured_nodes.next().expect("Expected one captured node");
-                    assert!(captured_nodes.next().is_none(), "Expected no more than one captured node");
+                    assert!(
+                        captured_nodes.next().is_none(),
+                        "Expected no more than one captured node"
+                    );
                     match target.parent() {
                         Some(parent) => parent.kind() == kind.as_ref(),
                         None => false,
@@ -148,60 +153,62 @@ impl<'src> QueryHelper<'src> {
 mod test {
     use super::testing::test_captures;
 
+    use indoc::indoc;
+
     #[test]
     fn test_has_ancestor() {
-        let input = /* c */ r#"
-int a;
-    //!? outfunc
-int b = 0;
-    //!? outfunc
-int func() {
-    //!? infunc
-    int c;
-        //!? infunc
-    if (a == b) {
-        //!? infunc inif
-             //!? infunc inif
-        int d;
-            //!? infunc inif
-        return d;
-               //!? infunc inif
-    }
-}
-"#;
-        let query = /* query */ r#"
+        let input = indoc! { /* c */ r#"
+            int a;
+                //!? outfunc
+            int b = 0;
+                //!? outfunc
+            int func() {
+                //!? infunc
+                int c;
+                    //!? infunc
+                if (a == b) {
+                    //!? infunc inif
+                         //!? infunc inif
+                    int d;
+                        //!? infunc inif
+                    return d;
+                           //!? infunc inif
+                }
+            }
+        "# };
+        let query = indoc! { /* query */ r#"
             ((identifier) @infunc
                 (#has-ancestor? @infunc function_definition))
             ((identifier) @outfunc
                 (#not-has-ancestor? @outfunc function_definition))
             ((identifier) @inif
                 (#has-ancestor? @inif if_statement))
-        "#;
+        "# };
         test_captures(query, input);
     }
 
     #[test]
     fn test_has_parent() {
-        let input = /* c */ r#"
-int a = 0;
-//!? toplevel
-        //!? number
+        let input = indoc! { /* c */ r#"
+            int a = 0;
+            //!? toplevel
+                    //!? number
 
-int main() {
-//!? toplevel
-    //!? funcdeclname
-    return 0;
-}
-"#;
+            int main() {
+            //!? toplevel
+                //!? funcdeclname
+                return 0;
+            }
+        "# };
 
-        let query = /* query */ r#"
+        let query = indoc! { /* query */ r#"
             ((_) @toplevel
                 (#has-parent? @toplevel translation_unit))
             ((_ declarator: (identifier) @funcdeclname)
                 (#has-parent? @funcdeclname function_declarator))
             ((number_literal) @number
                 (#not-has-parent? @number return_statement))
-        "#;
+        "# };
         test_captures(query, input);
     }
 }

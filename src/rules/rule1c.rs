@@ -24,12 +24,13 @@
 //!   `#define ABC 1 + 2` doesn't. Fixing this will require re-parsing all `preproc_arg` nodes, as
 //!   the current [tree-sitter-c][tree_sitter_c] grammar treats them as literal text.
 
+use indoc::indoc;
 use tree_sitter::{Point, QueryCapture, Tree};
 
 use crate::{rules::api::Rule, helpers::QueryHelper};
 
 /// Tree-sitter query for Rule I:C.
-const QUERY_STR: &'static str = /* query */ r#"
+const QUERY_STR: &'static str = indoc! { /* query */ r#"
     (
         (preproc_def name: (identifier) @constant.name.short)
         (#match? @constant.name.short "^.$")
@@ -42,7 +43,7 @@ const QUERY_STR: &'static str = /* query */ r#"
         (preproc_def value: (preproc_arg) @constant.value.unwrapped_number)
         (#match? @constant.value.unwrapped_number "^[0-9]+$")
     )
-"#;
+"# };
 
 /// # Rule I:C.
 ///

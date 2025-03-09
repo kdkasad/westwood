@@ -16,16 +16,17 @@
 //! underscores are used to separate words because splitting an identifier into words is
 //! subjective.
 
+use indoc::indoc;
 use tree_sitter::{Query, QueryCapture, QueryCursor, StreamingIterator as _, Tree};
 
 use crate::rules::api::Rule;
 
-const QUERY_STR: &'static str = /* query */ r#"
+const QUERY_STR: &'static str = indoc! { /* query */ r#"
     (
         (_ declarator: (identifier) @name)
         (#match? @name "[A-Z]")
     )
-"#;
+"# };
 
 /// # Rule I:A.
 ///

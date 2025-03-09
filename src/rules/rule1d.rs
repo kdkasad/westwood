@@ -16,12 +16,14 @@
 //! I interpret that as meaning all declarations/definitions and not just global variable
 //! declarations.
 
+use indoc::indoc;
 use tree_sitter::{Point, QueryCapture, Tree};
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 /// Tree-sitter query for Rule I:D.
-const QUERY_STR: &'static str = /* query */
+const QUERY_STR: &'static str = indoc! {
+    /* query */
     r#"
     (
         (_ declarator: (identifier) @global.no_g_prefix)
@@ -38,7 +40,8 @@ const QUERY_STR: &'static str = /* query */
             (type_definition) @declaration.top_level ; typedef
         ]
     )
-"#;
+    "#
+};
 
 /// # Rule I:D.
 ///
@@ -62,7 +65,9 @@ impl Rule for Rule1d {
             }
             let message: &str = match name {
                 "global.no_g_prefix" => "Global variables must be prefixed with \"g_\"",
-                "declaration.top_level" => "All top-level declarations must come before function definitions",
+                "declaration.top_level" => {
+                    "All top-level declarations must come before function definitions"
+                }
                 _ => unreachable!(),
             };
             let loc: Point = capture.node.start_position();
@@ -76,6 +81,8 @@ impl Rule for Rule1d {
 mod tests {
     use crate::helpers::testing::test_captures;
 
+    use indoc::indoc;
+
     use super::QUERY_STR;
 
     // TODO: Test the actual lints produced, because not all of the logic for this rule is
@@ -83,29 +90,29 @@ mod tests {
 
     #[test]
     fn rule1d() {
-        let input = /* c */ r#"
-int an_int;
-//!? declaration.top_level
-    //!? global.no_g_prefix
-void *a_g_ptr = NULL;
-//!? declaration.top_level
-      //!? global.no_g_prefix
+        let input = indoc! { /* c */ r#"
+            int an_int;
+            //!? declaration.top_level
+                //!? global.no_g_prefix
+            void *a_g_ptr = NULL;
+            //!? declaration.top_level
+                  //!? global.no_g_prefix
 
-char *foo() {
-//!? function
-    return NULL;
-}
+            char *foo() {
+            //!? function
+                return NULL;
+            }
 
-int g_int = 1;
-//!? declaration.top_level
-char g_char_array[10];
-//!? declaration.top_level
-struct {
-//!? declaration.top_level
-    int x;
-} another_global;
-  //!? global.no_g_prefix
-"#;
+            int g_int = 1;
+            //!? declaration.top_level
+            char g_char_array[10];
+            //!? declaration.top_level
+            struct {
+            //!? declaration.top_level
+                int x;
+            } another_global;
+              //!? global.no_g_prefix
+        "#};
         test_captures(QUERY_STR, input);
     }
 }
