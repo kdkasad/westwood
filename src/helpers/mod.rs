@@ -11,6 +11,8 @@ use tree_sitter::{
 ///
 /// - `#has-ancestor?`: Takes a capture and a node kind (string) as operands and matches if the
 ///   captured node has an ancestor of the given kind.
+/// - `#has-parent?`: Like `#has-ancestor?` but only checks the immediate parent of the captured
+///   node, not all ancestors.
 ///
 /// Each custom predicate also has a negated version prefixed with `not-`.
 pub struct QueryHelper<'src> {
@@ -111,6 +113,28 @@ impl<'src> QueryHelper<'src> {
                 }
             }
 
+            // Matches if the node's immediate parent is of the given kind
+            "has-parent?" => {
+                if let [QueryPredicateArg::Capture(capture_index), QueryPredicateArg::String(kind)] =
+                    predicate.args.as_ref()
+                {
+                    // Starting at the root, descend until we reach the captured node (target) and
+                    // check if any of the nodes along the way are of the given kind.
+                    let mut captured_nodes = qmatch.nodes_for_capture_index(*capture_index);
+                    let target = captured_nodes.next().expect("Expected one captured node");
+                    assert!(captured_nodes.next().is_none(), "Expected no more than one captured node");
+                    match target.parent() {
+                        Some(parent) => parent.kind() == kind.as_ref(),
+                        None => false,
+                    }
+                } else {
+                    panic!(
+                        "Invalid arguments to #{}. Expected a capture and a string.",
+                        orig_op
+                    );
+                }
+            }
+
             _ => {
                 eprintln!("WARNING: Ignoring unknown predicate `{}'", orig_op);
                 false
@@ -152,6 +176,31 @@ int func() {
                 (#not-has-ancestor? @outfunc function_definition))
             ((identifier) @inif
                 (#has-ancestor? @inif if_statement))
+        "#;
+        test_captures(query, input);
+    }
+
+    #[test]
+    fn test_has_parent() {
+        let input = /* c */ r#"
+int a = 0;
+//!? toplevel
+        //!? number
+
+int main() {
+//!? toplevel
+    //!? funcdeclname
+    return 0;
+}
+"#;
+
+        let query = /* query */ r#"
+            ((_) @toplevel
+                (#has-parent? @toplevel translation_unit))
+            ((_ declarator: (identifier) @funcdeclname)
+                (#has-parent? @funcdeclname function_declarator))
+            ((number_literal) @number
+                (#not-has-parent? @number return_statement))
         "#;
         test_captures(query, input);
     }
