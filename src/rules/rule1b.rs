@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! # Rule I:B
 //!
 //! ```text
@@ -48,6 +47,6 @@ pub struct Rule1b {}
 
 impl Rule for Rule1b {
     fn check(&self, _tree: &Tree, _code: &[u8]) -> Vec<Diagnostic<()>> {
-        return Vec::with_capacity(0);
+        Vec::with_capacity(0)
     }
 }

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 //! Helpers for unit testing.
 
 use std::collections::{HashMap, HashSet};
@@ -129,7 +128,7 @@ pub fn test_captures(query: &str, input: &str) {
         }
     });
     for ((row, col), set) in test_specs {
-        for label in set {
+        if let Some(label) = set.iter().next() {
             panic!("Expected @{} at row {} column {}", label, row, col);
         }
     }

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 pub mod api;
 pub mod rule1a;
 pub mod rule1b;
@@ -21,6 +20,7 @@ pub mod rule1d;
 
 use self::api::Rule;
 
+#[must_use]
 /// Returns a [Vec] of all [rules][Rule].
 pub fn get_rules() -> Vec<Box<dyn Rule>> {
     vec![

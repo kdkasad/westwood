@@ -45,7 +45,7 @@ use tree_sitter::{QueryCapture, Tree};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 /// Tree-sitter query for Rule I:C.
-const QUERY_STR: &'static str = indoc! { /* query */ r#"
+const QUERY_STR: &str = indoc! { /* query */ r#"
     (
         (preproc_def name: (identifier) @constant.name.short)
         (#match? @constant.name.short "^.$")
