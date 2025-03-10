@@ -43,8 +43,8 @@ const QUERY_STR: &'static str = indoc! {
     (
         (_ declarator: (identifier) @global.no_g_prefix)
         (#not-match? @global.no_g_prefix "^g_")
-        (#not-has-parent? @global.no_g_prefix function_declarator)
-        (#not-has-ancestor? @global.no_g_prefix function_definition)
+        (#not-has-ancestor? @global.no_g_prefix function_declarator) ; ignore function declarations
+        (#not-has-ancestor? @global.no_g_prefix function_definition) ; ignore local declarations
     )
 
     (translation_unit (function_definition) @function)
@@ -81,12 +81,12 @@ impl Rule for Rule1d {
             }
             let diagnostic = match name {
                 "global.no_g_prefix" => {
-                    let message = "Global variables must be prefixed with \"g_\"";
+                    let message = "Global variables must be prefixed with `g_'";
                     Diagnostic::warning()
                         .with_code("I:D")
                         .with_message(message)
                         .with_labels(vec![Label::primary((), capture.node.byte_range())
-                            .with_message("Declaration occurs here")])
+                            .with_message("Variable declared here")])
                 }
                 "declaration.top_level" => {
                     let message =
@@ -130,6 +130,21 @@ mod tests {
             void *a_g_ptr = NULL;
             //!? declaration.top_level
                   //!? global.no_g_prefix
+
+            struct my_struct function_with_params(int *x, char y);
+            //!? declaration.top_level
+
+            typedef struct MyStructure {
+            //!? declaration.top_level
+                char Character;
+            } MyType;
+            typedef union MyUnion {
+            //!? declaration.top_level
+                char Character;
+                struct {
+                    char *(FuncPtr)(int Arg);
+                } AnonStruct;
+            } MyType;
 
             char *foo() {
             //!? function
