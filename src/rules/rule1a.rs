@@ -38,7 +38,23 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 const QUERY_STR: &'static str = indoc! { /* query */ r#"
     (
-        (_ declarator: (identifier) @name)
+        [
+            (_ declarator: [
+                (identifier) @name ; handles variables
+                (field_identifier) @name ; handles struct/union fields
+                (type_identifier) @name ; handles typedefs
+                (parenthesized_declarator (_) @name) ; handles parenthesized names, e.g. function pointers
+            ])
+            (struct_specifier ; handles struct declarations
+                name: (type_identifier) @name
+                body: (_))
+            (union_specifier ; handles union declarations
+                name: (type_identifier) @name
+                body: (_))
+            (enum_specifier ; handles enum declarations
+                name: (type_identifier) @name
+                body: (_))
+        ]
         (#match? @name "[A-Z]")
     )
 "# };
@@ -55,18 +71,59 @@ impl Rule for Rule1a {
         helper.for_each_capture(|_label, capture| {
             let nametype = match capture.node.parent().unwrap().kind() {
                 "function_declarator" => "Function",
+                "struct_specifier" => "Struct",
+                "union_specifier" => "Union",
+                "enum_specifier" => "Enum",
+                "type_definition" => "Type",
                 _ => "Variable",
             };
             let diagnostic = Diagnostic::warning()
-                .with_message("Identifier violates naming conventions")
+                .with_message(format!("{} names must be in lower snake case.", nametype))
                 .with_code("I:A")
                 .with_labels(vec![Label::primary((), capture.node.byte_range())
-                    .with_message(format!(
-                        "{} name contains uppercase character(s)",
-                        nametype
-                    ))]);
+                    .with_message("Name contains uppercase character(s)")]);
             diagnostics.push(diagnostic);
         });
         diagnostics
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use indoc::indoc;
+
+    use crate::helpers::testing::test_captures;
+
+    #[test]
+    fn rule1a() {
+        let input = indoc! { /* c */ r#"
+            int Name;
+                //!? name
+            int *Name;
+                 //!? name
+            int *Name[];
+                 //!? name
+            int Name[];
+                //!? name
+            typedef struct MyStructure {
+                           //!? name
+                char Character;
+                     //!? name
+            } MyType;
+              //!? name
+            typedef union MyUnion {
+                          //!? name
+                char Character;
+                     //!? name
+                struct {
+                    char *(FuncPtr)(int Arg);
+                           //!? name
+                                        //!? name
+                } AnonStruct;
+                  //!? name
+            } MyType;
+              //!? name
+        "#};
+        test_captures(super::QUERY_STR, input);
     }
 }
