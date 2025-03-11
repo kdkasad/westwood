@@ -38,6 +38,11 @@ jobs:
       - name: Lint code
         run: cargo clippy --all-targets
 
+      # Adding this because the repository is private (for now) and we don't
+        # want to run the whole build workflow on each push
+      - name: Compile project
+        run: cargo build --release --locked
+
       - name: Compile tests
         run: cargo test --workspace --no-fail-fast --no-run --locked
 
