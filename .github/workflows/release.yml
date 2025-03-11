@@ -1,0 +1,49 @@
+name: Publish Westwood release
+
+on:
+  release:
+    types:
+      - published
+
+jobs:
+  build:
+    name: Build
+    uses: ./.github/workflows/build.yml
+
+  publish-docs:
+    name: Publish documentation
+    uses: ./.github/workflows/publish-docs.yml
+
+  publish-binaries:
+    name: Upload Westwood binaries to GitHub release
+    if: ${{ github.event_name == 'release' }}
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Download binary artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Publish binaries
+        run: |
+          find .
+          gh release upload ${{ github.ref_name }} $(find . -type f '(' -name 'westwood-*-*.zip' -or -name 'westwood-*-*.tar.gz' ')' )
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  publish-to-crates-io:
+    name: Publish release to crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v3
+
+      - name: Set up Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Publish to crates.io
+        run: cargo publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

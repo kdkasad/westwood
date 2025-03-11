@@ -1,0 +1,103 @@
+name: Build Westwood binaries
+
+on:
+  workflow_call:
+  push:
+    branches:
+      - 'release/*'
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - master
+      - 'release/*'
+
+env:
+  CARGO_INCREMENTAL: 0
+  RUST_BACKTRACE: short
+  RUSTFLAGS: '-D warnings'
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            artifact: westwood-x86_64-windows.zip
+
+          - os: windows-latest
+            target: i686-pc-windows-msvc
+            artifact: westwood-i686-windows.zip
+
+          - os: windows-latest
+            target: aarch64-pc-windows-msvc
+            artifact: westwood-aarch64-windows.zip
+
+          - os: macos-latest
+            target: x86_64-apple-darwin
+            artifact: westwood-x86_64-macos.tar.gz
+
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            artifact: westwood-aarch64-macos.tar.gz
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            artifact: westwood-x86_64-linux.tar.gz
+
+          - os: ubuntu-latest
+            target: aarch64-unknown-linux-gnu
+            artifact: westwood-aarch64-linux.tar.gz
+            use-cross: true
+
+          - os: ubuntu-latest
+            target: armv7-unknown-linux-gnueabihf
+            artifact: westwood-armv7hf-linux.tar.gz
+            use-cross: true
+
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            artifact: westwood-x86_64-alpine.tar.gz
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache build artifacts
+        uses: Swatinem/rust-cache@v2
+
+      - name: Compile
+        if: ${{ matrix.use-cross != true }}
+        run: cargo build --target ${{ matrix.target }} --release --locked
+
+      - name: Install cross
+        if: ${{ matrix.use-cross == true }}
+        run: cargo install cross
+
+      - name: Compile (using cross)
+        if: ${{ matrix.use-cross == true }}
+        run: cross build --target ${{ matrix.target }} --release --locked
+
+      - name: Create archive (Windows)
+        if: ${{ contains(matrix.os, 'windows') }}
+        run: ${{ format('Compress-Archive target/{0}/release/westwood.exe {1}', matrix.target, matrix.artifact) }}
+
+      - name: Create archive (macOS)
+        if: ${{ contains(matrix.os, 'macos') }}
+        run: ${{ format('gtar -czvf {1} -C target/{0}/release westwood', matrix.target, matrix.artifact) }}
+
+      - name: Create archive (Linux)
+        if: ${{ contains(matrix.os, 'ubuntu') }}
+        run: ${{ format('tar -czvf {1} -C target/{0}/release westwood', matrix.target, matrix.artifact) }}
+
+      - name: Upload archive artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ matrix.artifact }}
