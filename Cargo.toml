@@ -16,3 +16,6 @@ codespan-reporting = "0.11.1"
 indoc = "2.0.6"
 tree-sitter = "0.25.3"
 tree-sitter-c = "0.23.4"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"

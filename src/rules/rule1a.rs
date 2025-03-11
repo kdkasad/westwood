@@ -80,12 +80,47 @@ impl Rule for Rule1a {
             let diagnostic = Diagnostic::warning()
                 .with_message(format!("{} names must be in lower snake case.", nametype))
                 .with_code("I:A")
-                .with_labels(vec![Label::primary((), capture.node.byte_range())
-                    .with_message("Name contains uppercase character(s)")]);
+                .with_labels(vec![
+                    Label::primary((), capture.node.byte_range())
+                        .with_message("Name contains uppercase character(s)"),
+                    Label::secondary((), capture.node.byte_range()).with_message(format!(
+                        "Perhaps you meant `{}'",
+                        guess_lower_snake_case(
+                            capture
+                                .node
+                                .utf8_text(code)
+                                .expect("Code is not valid UTF-8")
+                        )
+                    )),
+                ]);
             diagnostics.push(diagnostic);
         });
         diagnostics
     }
+}
+
+/// Attempts to convert a name to lower snake case.
+///
+/// If the name contains a lowercase character followed by an uppercase one, the two will be
+/// converted to lowercase and separated by an underscore.
+fn guess_lower_snake_case(name: &str) -> String {
+    let mut result = String::with_capacity(name.len());
+    let mut last_was_lower = false;
+    for (i, c) in name.char_indices() {
+        if c.is_uppercase() {
+            if i != 0 && last_was_lower {
+                result.push('_');
+            }
+            c.to_lowercase().for_each(|newc| result.push(newc));
+            last_was_lower = false;
+        } else {
+            if c.is_lowercase() {
+                last_was_lower = true;
+            }
+            result.push(c);
+        }
+    }
+    result
 }
 
 #[cfg(test)]
@@ -93,6 +128,20 @@ mod tests {
     use indoc::indoc;
 
     use crate::helpers::testing::test_captures;
+    use pretty_assertions::assert_eq;
+
+    #[test]
+    fn guess_lower_snake_case() {
+        let tests: Vec<(&str, &str)> = vec![
+            ("MYSTR", "mystr"),
+            ("myStr", "my_str"),
+            ("MY_STR", "my_str"),
+            ("thisIsAStruct", "this_is_astruct"),
+        ];
+        for (input, expected) in tests {
+            assert_eq!(expected, super::guess_lower_snake_case(input));
+        }
+    }
 
     #[test]
     fn rule1a() {

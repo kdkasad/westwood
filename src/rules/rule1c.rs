@@ -70,27 +70,40 @@ impl Rule for Rule1c {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
-            let (message, label) = match name {
+            let node_text = capture
+                .node
+                .utf8_text(code)
+                .expect("Code is not valid UTF-8");
+            let (message, label, fix) = match name {
                 "constant.name.short" => (
                     "Constant name must contain at least 2 characters",
                     "Constant defined here",
+                    None,
                 ),
                 "constant.name.contains_lower" => (
                     "Constant name must use upper snake case",
                     "Constant defined here",
+                    Some(node_text.to_uppercase()),
                 ),
                 "constant.value.unwrapped_number" => (
                     "Numeric constant value must be wrapped in parentheses",
                     "Value defined here",
+                    Some(format!("({})", node_text)),
                 ),
                 _ => unreachable!(),
             };
-            let diagnostic = Diagnostic::warning()
+            let mut diagnostic = Diagnostic::warning()
                 .with_code("I:C")
                 .with_message(message)
                 .with_labels(vec![
                     Label::primary((), capture.node.byte_range()).with_message(label)
                 ]);
+            if let Some(fix) = fix {
+                diagnostic.labels.push(
+                    Label::secondary((), capture.node.byte_range())
+                        .with_message(format!("Perhaps you meant `{}'", fix)),
+                );
+            }
             diagnostics.push(diagnostic);
         });
         diagnostics
