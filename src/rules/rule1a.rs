@@ -36,7 +36,7 @@ use tree_sitter::Tree;
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
-const QUERY_STR: &'static str = indoc! { /* query */ r#"
+const QUERY_STR: &str = indoc! { /* query */ r#"
     (
         [
             (_ declarator: [

@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 pub mod testing;
 
 use tree_sitter::{
@@ -45,6 +44,7 @@ impl<'src> QueryHelper<'src> {
     /// - `query_src`: Tree-sitter query to execute.
     /// - `tree`: Tree to execute query on.
     /// - `code`: Source text/code that `tree` represents.
+    #[must_use]
     pub fn new(query_src: &str, tree: &'src Tree, code: &'src [u8]) -> Self {
         let query =
             Query::new(&tree_sitter_c::LANGUAGE.into(), query_src).expect("Failed to parse query");
@@ -89,11 +89,9 @@ impl<'src> QueryHelper<'src> {
 
         // If the operator starts with #not- then we simply perform the regular operator and negate
         // it when returning.
-        let (op, negate) = if let Some(rest) = orig_op.strip_prefix("not-") {
-            (rest, true)
-        } else {
-            (orig_op, false)
-        };
+        let (op, negate) = orig_op
+            .strip_prefix("not-")
+            .map_or((orig_op, false), |rest| (rest, true));
 
         let result = match op {
             // Matches if any ancestor of the captured node is of the given kind
@@ -143,10 +141,9 @@ impl<'src> QueryHelper<'src> {
                         captured_nodes.next().is_none(),
                         "Expected no more than one captured node"
                     );
-                    match target.parent() {
-                        Some(parent) => parent.kind() == kind.as_ref(),
-                        None => false,
-                    }
+                    target
+                        .parent()
+                        .is_some_and(|parent| parent.kind() == kind.as_ref())
                 } else {
                     panic!(
                         "Invalid arguments to #{}. Expected a capture and a string.",
@@ -160,7 +157,7 @@ impl<'src> QueryHelper<'src> {
                 false
             }
         };
-        return result ^ negate;
+        result ^ negate
     }
 }
 

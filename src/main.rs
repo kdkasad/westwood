@@ -91,5 +91,5 @@ fn main() -> ExitCode {
         }
     }
 
-    return ExitCode::SUCCESS;
+    ExitCode::SUCCESS
 }
