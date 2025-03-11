@@ -1,7 +1,7 @@
 [package]
 name = "westwood"
 version = "0.0.0"
-description = "A linter for Purdue's CS 240 course"
+description = "A C source code linter for Purdue's CS 240 course"
 repository = "https://github.com/kdkasad/westwood"
 license = "Apache-2.0"
 authors = ["Kian Kasad <kian@kasad.com>"]
@@ -12,6 +12,8 @@ exclude = ["/.nvim*", "/.github/"]
 cc = "*"
 
 [dependencies]
+clap = { version = "4.5.31", features = ["cargo", "derive"] }
+clap-stdin = "0.6.0"
 codespan-reporting = "0.11.1"
 indoc = "2.0.6"
 tree-sitter = "0.25.3"

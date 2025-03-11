@@ -12,41 +12,46 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-
 use std::process::ExitCode;
 
 use crate::rules::api::Rule;
-use codespan_reporting::{files::SimpleFile, term::{self, termcolor::{ColorChoice, StandardStream}}};
+use clap::crate_description;
+use clap::Parser as CliArgParser;
+use clap_stdin::FileOrStdin;
+use codespan_reporting::{
+    files::SimpleFile,
+    term::{
+        self,
+        termcolor::{ColorChoice, StandardStream},
+    },
+};
 use tree_sitter::{Parser, Tree};
 
 pub mod helpers;
 pub mod rules;
 
-fn usage() {
-    let maybe_argv0: Option<String> = std::env::args().nth(0);
-    let executable: &str = maybe_argv0.as_deref().unwrap_or("westwood");
-    eprintln!("Usage: {} <file>", executable);
+/// Description printed with `--help` flag
+const LONG_ABOUT: &str = concat!("Westwood: ", crate_description!());
+
+#[derive(CliArgParser, Debug)]
+#[command(version, about = None, long_about = LONG_ABOUT)]
+struct CliOptions {
+    /// File to lint, or `-' for standard input
+    file: FileOrStdin,
 }
 
 fn main() -> ExitCode {
-    // Get file from args
-    let mut args = std::env::args();
-    let filename: String = match args.nth(1) {
-        Some(arg) => arg,
-        None => {
-            eprintln!("Error: Expected a filename");
-            usage();
-            return ExitCode::FAILURE;
-        }
-    };
-    if args.len() != 0 {
-        eprintln!("Error: Too many arguments provided");
-        usage();
-        return ExitCode::FAILURE;
+    let cli = CliOptions::parse();
+
+    // Save filename
+    let filename = match cli.file.is_file() {
+        true => cli.file.filename(),
+        false => "(stdin)",
     }
+    .to_owned();
 
     // Read file
-    let code: String = match std::fs::read_to_string(&filename) {
+    let code: String = match cli.file.contents() {
         Ok(contents) => contents,
         Err(err) => {
             eprintln!("Error: Cannot read {}: {}", filename, err);
@@ -74,14 +79,15 @@ fn main() -> ExitCode {
     // Create diagnostic writer & file source
     let writer = StandardStream::stdout(ColorChoice::Auto);
     let config = term::Config::default();
-    let files = SimpleFile::new(&filename, &code);
+    let files = SimpleFile::new(filename, &code);
 
     // Do checks
     let rules: Vec<Box<dyn Rule>> = crate::rules::get_rules();
     for rule in rules {
         let diagnostics = rule.check(&tree, code.as_bytes());
         for diagnostic in diagnostics {
-            term::emit(&mut writer.lock(), &config, &files, &diagnostic).expect("Failed to write diagnostic");
+            term::emit(&mut writer.lock(), &config, &files, &diagnostic)
+                .expect("Failed to write diagnostic");
         }
     }
 
