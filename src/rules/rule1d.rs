@@ -85,8 +85,17 @@ impl Rule for Rule1d {
                     Diagnostic::warning()
                         .with_code("I:D")
                         .with_message(message)
-                        .with_labels(vec![Label::primary((), capture.node.byte_range())
-                            .with_message("Variable declared here")])
+                        .with_labels(vec![
+                            Label::primary((), capture.node.byte_range())
+                                .with_message("Variable declared here"),
+                            Label::secondary((), capture.node.byte_range()).with_message(format!(
+                                "Perhaps you meant `g_{}'",
+                                capture
+                                    .node
+                                    .utf8_text(code)
+                                    .expect("Code is not valid UTF-8")
+                            )),
+                        ])
                 }
                 "declaration.top_level" => {
                     let message =
