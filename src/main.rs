@@ -17,7 +17,13 @@ use std::process::ExitCode;
 use crate::rules::api::Rule;
 use clap::crate_description;
 use clap::Parser as CliArgParser;
+use clap::ValueEnum;
 use clap_stdin::FileOrStdin;
+use codespan_reporting::diagnostic::Diagnostic;
+use codespan_reporting::diagnostic::Label;
+use codespan_reporting::diagnostic::LabelStyle;
+use codespan_reporting::diagnostic::Severity;
+use codespan_reporting::files::Files;
 use codespan_reporting::{
     files::SimpleFile,
     term::{
@@ -38,6 +44,19 @@ const LONG_ABOUT: &str = concat!("Westwood: ", crate_description!());
 struct CliOptions {
     /// File to lint, or `-' for standard input
     file: FileOrStdin,
+
+    #[arg(value_enum, short, long, default_value_t = OutputFormat::Pretty)]
+    format: OutputFormat,
+}
+
+/// Format in which to print diagnostics
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum OutputFormat {
+    /// Pretty human-readable output
+    Pretty,
+
+    /// Machine-parseable output
+    Machine,
 }
 
 fn main() -> ExitCode {
@@ -86,10 +105,82 @@ fn main() -> ExitCode {
     for rule in rules {
         let diagnostics = rule.check(&tree, code.as_bytes());
         for diagnostic in diagnostics {
-            term::emit(&mut writer.lock(), &config, &files, &diagnostic)
-                .expect("Failed to write diagnostic");
+            match cli.format {
+                OutputFormat::Pretty => {
+                    term::emit(&mut writer.lock(), &config, &files, &diagnostic)
+                        .expect("Failed to write diagnostic")
+                }
+                OutputFormat::Machine => print_machine_parseable(&files, &diagnostic),
+            }
         }
     }
 
     ExitCode::SUCCESS
+}
+
+/// Prints a [`Diagnostic`][1] in a machine-parseable format.
+///
+/// # Format
+///
+/// The format is consistent and self-explanatory, so an example should suffice to describe the format:
+/// ```text
+/// WARNING: [I:D] All top-level declarations must come before function definitions
+///          at hw8_main.c from line 212 column 1 to line 217 column 2
+/// ```
+///
+/// Currently, this format does not print any labels other than the primary one, and discards all
+/// label messages, keeping only the message of the diagnostic itself.
+///
+/// # Panics
+///
+/// This function requires that the given diagnostic has at least one [`Label`][3] with a style
+/// of [`Primary`][2]. If this is not the case, it will panic.
+///
+/// This function also panics if the primary label of the given diagnostic has a file ID which is
+/// not in the given [`Files`] database.
+///
+/// [1]: codespan_reporting::diagnostic::Diagnostic
+/// [2]: codespan_reporting::diagnostic::LabelStyle::Primary
+/// [3]: codespan_reporting::diagnostic::Label
+fn print_machine_parseable<'files, F>(files: &'files F, diagnostic: &Diagnostic<F::FileId>)
+where
+    F: Files<'files, Name: AsRef<str>>,
+{
+    let primary_label: &Label<_> = diagnostic
+        .labels
+        .iter()
+        .find(|label| label.style == LabelStyle::Primary)
+        .expect("Diagnostic has no primary label");
+    let filename = files
+        .name(primary_label.file_id)
+        .expect("Expected to find a file with the given ID");
+    let byte_range = &primary_label.range;
+    let start = files
+        .location(primary_label.file_id, byte_range.start)
+        .unwrap();
+    let end = files
+        .location(primary_label.file_id, byte_range.end)
+        .unwrap();
+    let severity = match diagnostic.severity {
+        Severity::Bug => "BUG",
+        Severity::Error => "ERROR",
+        Severity::Warning => "WARNING",
+        Severity::Note => "NOTE",
+        Severity::Help => "HELP",
+    };
+    print!("{}: ", severity);
+    if let Some(code) = diagnostic.code.as_ref() {
+        print!("[{}] ", code);
+    }
+    println!("{}", diagnostic.message);
+    println!(
+        "{:indent$}at {} from line {} column {} to line {} column {}",
+        "",
+        filename,
+        start.line_number,
+        start.column_number,
+        end.line_number,
+        end.column_number,
+        indent = severity.len() + 2,
+    );
 }
