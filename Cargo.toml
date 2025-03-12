@@ -6,6 +6,7 @@ repository = "https://github.com/kdkasad/westwood"
 license = "Apache-2.0"
 authors = ["Kian Kasad <kian@kasad.com>"]
 edition = "2021"
+rust-version = "1.85"
 exclude = ["/.nvim*", "/.github/"]
 
 [build-dependencies]
