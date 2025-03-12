@@ -7,8 +7,9 @@
       - [ ] Come up with a Vim `'errorformat'` string to match the output format
     - [ ] JSON
     - [ ] Output source code annotated with errors in-line
-- [ ] LSP support? (Probably a massive undertaking)
+- [ ] Overhaul documentation
 - [ ] Figure out and possibly provide configurations for editor integration
   - [ ] Vim
   - [ ] Neovim
   - [ ] VS Code (probably too difficult to be worth it)
+- [ ] LSP support? (Probably a massive undertaking)
