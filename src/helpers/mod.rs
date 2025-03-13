@@ -18,6 +18,7 @@ use tree_sitter::{
     Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg,
     StreamingIterator as _, Tree,
 };
+use unicode_width::UnicodeWidthChar;
 
 /// Helper to handle creating and executing queries while handling custom predicates.
 ///
@@ -187,11 +188,26 @@ pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code 
     node.utf8_text(code).expect("Code is not valid UTF-8")
 }
 
+/// Gets the number of columns by which this line is indented. Tab characters (U+0009 or `'\t'`)
+/// are counted as 8 columns. All other whitespace is sized using [unicode_width].
+pub fn indent_width(line: &str) -> usize {
+    line.chars()
+        .take_while(|c| c.is_whitespace())
+        .map(|c| match c {
+            '\t' => 8,
+            // SAFETY: We're filtering for only whitespace, so we won't get a control character, which
+            // is when .width() returns None.
+            other => other.width().unwrap(),
+        })
+        .sum()
+}
+
 #[cfg(test)]
 mod test {
     use super::{testing::test_captures, QueryHelper};
 
     use indoc::indoc;
+    use pretty_assertions::assert_eq;
     use tree_sitter::Parser;
 
     #[test]
@@ -279,6 +295,23 @@ mod test {
                     super::function_definition_name(capture.node, code.as_bytes())
                 );
             });
+        }
+    }
+
+    #[test]
+    /// Test [indent_width()][super::indent_width()].
+    fn indent_width() {
+        let tests = [
+            ("a", 0),
+            (" a", 1),
+            ("  a", 2),
+            ("\ta", 8),
+            (" \t a", 10),
+            (" ", 1),
+            ("\t", 8),
+        ];
+        for (line, expected_indent) in tests {
+            assert_eq!(expected_indent, super::indent_width(line));
         }
     }
 }
