@@ -15,7 +15,8 @@
 pub mod testing;
 
 use tree_sitter::{
-    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg, StreamingIterator as _, Tree
+    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg,
+    StreamingIterator as _, Tree,
 };
 
 /// Helper to handle creating and executing queries while handling custom predicates.
@@ -265,12 +266,18 @@ mod test {
         ];
         for (code, expected_name) in tests {
             let mut parser = Parser::new();
-            parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+            parser
+                .set_language(&tree_sitter_c::LANGUAGE.into())
+                .unwrap();
             let tree = parser.parse(code.as_bytes(), None).unwrap();
-            let helper = QueryHelper::new("(function_definition) @function", &tree, code.as_bytes());
+            let helper =
+                QueryHelper::new("(function_definition) @function", &tree, code.as_bytes());
             helper.for_each_capture(|label, capture| {
                 assert_eq!("function", label);
-                assert_eq!(expected_name, super::function_definition_name(capture.node, code.as_bytes()));
+                assert_eq!(
+                    expected_name,
+                    super::function_definition_name(capture.node, code.as_bytes())
+                );
             });
         }
     }

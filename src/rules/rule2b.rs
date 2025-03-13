@@ -29,7 +29,10 @@ use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::{QueryCapture, Tree};
 
-use crate::{helpers::{function_definition_name, QueryHelper}, rules::api::Rule};
+use crate::{
+    helpers::{function_definition_name, QueryHelper},
+    rules::api::Rule,
+};
 
 /// Number of lines per page
 const PAGE_SIZE: usize = 61;
