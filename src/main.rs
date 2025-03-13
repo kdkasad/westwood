@@ -118,7 +118,7 @@ fn main() -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// Prints a [`Diagnostic`][1] in a machine-parseable format.
+/// Prints a [`Diagnostic`] in a machine-parseable format.
 ///
 /// # Format
 ///
@@ -133,15 +133,13 @@ fn main() -> ExitCode {
 ///
 /// # Panics
 ///
-/// This function requires that the given diagnostic has at least one [`Label`][3] with a style
+/// This function requires that the given diagnostic has at least one [`Label`] with a style
 /// of [`Primary`][2]. If this is not the case, it will panic.
 ///
 /// This function also panics if the primary label of the given diagnostic has a file ID which is
 /// not in the given [`Files`] database.
 ///
-/// [1]: codespan_reporting::diagnostic::Diagnostic
 /// [2]: codespan_reporting::diagnostic::LabelStyle::Primary
-/// [3]: codespan_reporting::diagnostic::Label
 fn print_machine_parseable<'files, F>(files: &'files F, diagnostic: &Diagnostic<F::FileId>)
 where
     F: Files<'files, Name: AsRef<str>>,
