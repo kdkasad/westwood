@@ -27,9 +27,9 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Node, QueryCapture, Tree};
+use tree_sitter::{QueryCapture, Tree};
 
-use crate::{helpers::QueryHelper, rules::api::Rule};
+use crate::{helpers::{function_definition_name, QueryHelper}, rules::api::Rule};
 
 /// Number of lines per page
 const PAGE_SIZE: usize = 61;
@@ -82,47 +82,18 @@ impl Rule for Rule2b {
     }
 }
 
-/// Returns the name of a function defined by a `function_definition` node.
-///
-/// # Panics
-///
-/// This function panics if:
-/// - the given `node`'s [kind][Node::kind()] is not `function_definition`;
-/// - the given `node` does not have an `identifier` child reachable by repeatedly traversing to
-///   the node named by the `declarator` field;
-/// - the node's text is not valid UTF-8
-///
-fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code str {
-    assert_eq!(
-        "function_definition",
-        node.kind(),
-        "Expected node to have kind `function_definition'"
-    );
-
-    let mut node = node;
-    while node.kind() != "identifier" {
-        node = node
-            .child_by_field_name("declarator")
-            .expect("Expected node to have a `declarator' field");
-    }
-    node.utf8_text(code).expect("Code is not valid UTF-8")
-}
-
 #[cfg(test)]
 mod tests {
-    use crate::{helpers::QueryHelper, rules::{
+    use crate::rules::{
         api::Rule,
         rule2b::{MAX_PAGES_PER_FUNCTION, PAGE_SIZE},
-    }};
+    };
 
     use codespan_reporting::diagnostic::{Diagnostic, Label};
     use pretty_assertions::assert_eq;
     use tree_sitter::Parser;
 
-    use super::{Rule2b, QUERY_STR};
-
-    // TODO: Test the actual lints produced, because not all of the logic for this rule is
-    // encapsulated in the query.
+    use super::Rule2b;
 
     #[test]
     fn rule2b() {
@@ -157,27 +128,5 @@ mod tests {
                     )
                 )])]
         );
-    }
-
-    #[test]
-    fn function_definition_name() {
-        // List of tuples of the form (code, function name)
-        let tests = [
-            ("int main() {}", "main"),
-            ("void **(*ptrptrptr)(char a[])", "ptrptrptr"),
-            ("char *strcpy(char *dst, const char *src)", "strcpy"),
-            ("char *strdup(const char *src)", "strdup"),
-            ("void free(void *ptr)", "free"),
-        ];
-        for (code, expected_name) in tests {
-            let mut parser = Parser::new();
-            parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-            let tree = parser.parse(code.as_bytes(), None).unwrap();
-            let helper = QueryHelper::new(QUERY_STR, &tree, code.as_bytes());
-            helper.for_each_capture(|label, capture| {
-                assert_eq!("function", label);
-                assert_eq!(expected_name, super::function_definition_name(capture.node, code.as_bytes()));
-            });
-        }
     }
 }

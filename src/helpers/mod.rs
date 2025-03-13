@@ -15,8 +15,7 @@
 pub mod testing;
 
 use tree_sitter::{
-    Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg,
-    StreamingIterator as _, Tree,
+    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg, StreamingIterator as _, Tree
 };
 
 /// Helper to handle creating and executing queries while handling custom predicates.
@@ -161,13 +160,41 @@ impl<'src> QueryHelper<'src> {
     }
 }
 
+/// Returns the name of a function defined by a `function_definition` node.
+///
+/// # Panics
+///
+/// This function panics if:
+/// - the given `node`'s [kind][Node::kind()] is not `function_definition`;
+/// - the given `node` does not have an `identifier` child reachable by repeatedly traversing to
+///   the node named by the `declarator` field;
+/// - the node's text is not valid UTF-8
+///
+pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code str {
+    assert_eq!(
+        "function_definition",
+        node.kind(),
+        "Expected node to have kind `function_definition'"
+    );
+
+    let mut node = node;
+    while node.kind() != "identifier" {
+        node = node
+            .child_by_field_name("declarator")
+            .expect("Expected node to have a `declarator' field");
+    }
+    node.utf8_text(code).expect("Code is not valid UTF-8")
+}
+
 #[cfg(test)]
 mod test {
-    use super::testing::test_captures;
+    use super::{testing::test_captures, QueryHelper};
 
     use indoc::indoc;
+    use tree_sitter::Parser;
 
     #[test]
+    /// Test the `#has-ancestor?` custom predicate.
     fn test_has_ancestor() {
         let input = indoc! { /* c */ r#"
             int a;
@@ -200,6 +227,7 @@ mod test {
     }
 
     #[test]
+    /// Test the `#has-parent?` custom predicate.
     fn test_has_parent() {
         let input = indoc! { /* c */ r#"
             int a = 0;
@@ -222,5 +250,28 @@ mod test {
                 (#not-has-parent? @number return_statement))
         "# };
         test_captures(query, input);
+    }
+
+    #[test]
+    /// Test [function_definition_name()][super::function_definition_name()].
+    fn function_definition_name() {
+        // List of tuples of the form (code, function name)
+        let tests = [
+            ("int main() {}", "main"),
+            ("void **(*ptrptrptr)(char a[])", "ptrptrptr"),
+            ("char *strcpy(char *dst, const char *src)", "strcpy"),
+            ("char *strdup(const char *src)", "strdup"),
+            ("void free(void *ptr)", "free"),
+        ];
+        for (code, expected_name) in tests {
+            let mut parser = Parser::new();
+            parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+            let tree = parser.parse(code.as_bytes(), None).unwrap();
+            let helper = QueryHelper::new("(function_definition) @function", &tree, code.as_bytes());
+            helper.for_each_capture(|label, capture| {
+                assert_eq!("function", label);
+                assert_eq!(expected_name, super::function_definition_name(capture.node, code.as_bytes()));
+            });
+        }
     }
 }
