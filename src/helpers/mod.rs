@@ -52,6 +52,19 @@ impl<'src> QueryHelper<'src> {
         Self { query, tree, code }
     }
 
+    /// Returns a reference to this helper's query.
+    pub fn query(&self) -> &Query {
+        &self.query
+    }
+
+    /// Returns the index for the capture with the given name, or panics if there is no capture
+    /// with such a name.
+    pub fn index_for_capture(&self, name: &str) -> u32 {
+        self.query
+            .capture_index_for_name(name)
+            .unwrap_or_else(|| panic!("Query has no capture named `{}'", name))
+    }
+
     /// Executes the query and calls a callback for each capture obtained by the query.
     ///
     /// # Arguments
@@ -76,6 +89,30 @@ impl<'src> QueryHelper<'src> {
             let capture = qmatch.captures[*capture_index_within_match];
             let name = capture_names[capture.index as usize];
             handler(name, capture);
+        }
+    }
+
+    /// Executes the query and calls a callback for each match obtained by the query.
+    ///
+    /// # Arguments
+    ///
+    /// - `handler`: Callback to execute for each match.
+    ///   The argument to the callback is the [QueryMatch].
+    pub fn for_each_match<F>(&self, mut handler: F)
+    where
+        F: FnMut(&QueryMatch),
+    {
+        let mut cursor = QueryCursor::new();
+        let mut matches = cursor.matches(&self.query, self.tree.root_node(), self.code);
+        while let Some(qmatch) = matches.next() {
+            let custom_predicates = self.query.general_predicates(qmatch.pattern_index);
+            if !custom_predicates
+                .iter()
+                .all(|pred| self.predicate_matches(pred, qmatch))
+            {
+                continue;
+            }
+            handler(qmatch);
         }
     }
 
