@@ -86,10 +86,7 @@ impl Rule for Rule1a {
                     Label::secondary((), capture.node.byte_range()).with_message(format!(
                         "Perhaps you meant `{}'",
                         guess_lower_snake_case(
-                            capture
-                                .node
-                                .utf8_text(code)
-                                .expect("Code is not valid UTF-8")
+                            capture.node.utf8_text(code).expect("Code is not valid UTF-8")
                         )
                     )),
                 ]);

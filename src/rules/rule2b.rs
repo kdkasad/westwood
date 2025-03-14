@@ -110,9 +110,7 @@ mod tests {
 
         // Test for diagnostic
         let mut parser = Parser::new();
-        parser
-            .set_language(&tree_sitter_c::LANGUAGE.into())
-            .unwrap();
+        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule2b = Rule2b {};
         assert_eq!(
@@ -124,12 +122,12 @@ mod tests {
                     MAX_PAGES_PER_FUNCTION,
                     PAGE_SIZE * MAX_PAGES_PER_FUNCTION
                 ))
-                .with_labels(vec![Label::primary((), 0..(code.len() - 1)).with_message(
-                    format!(
+                .with_labels(vec![
+                    Label::primary((), 0..(code.len() - 1)).with_message(format!(
                         "Function `main()' is {} lines long",
                         2 + MAX_PAGES_PER_FUNCTION * PAGE_SIZE
-                    )
-                )])]
+                    ))
+                ])]
         );
     }
 }

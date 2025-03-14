@@ -97,10 +97,7 @@ impl<'a> Iterator for LinesWithPosition<'a> {
         }
         // TODO: Support \r\n line endings
         let start_index = self.index;
-        let eol_index = self
-            .remaining_input
-            .find('\n')
-            .unwrap_or(self.remaining_input.len());
+        let eol_index = self.remaining_input.find('\n').unwrap_or(self.remaining_input.len());
         let mut next_line_start = eol_index;
         if eol_index != self.remaining_input.len() {
             // Skip newline

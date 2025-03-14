@@ -153,12 +153,8 @@ where
         .name(primary_label.file_id)
         .expect("Expected to find a file with the given ID");
     let byte_range = &primary_label.range;
-    let start = files
-        .location(primary_label.file_id, byte_range.start)
-        .unwrap();
-    let end = files
-        .location(primary_label.file_id, byte_range.end)
-        .unwrap();
+    let start = files.location(primary_label.file_id, byte_range.start).unwrap();
+    let end = files.location(primary_label.file_id, byte_range.end).unwrap();
     let severity = match diagnostic.severity {
         Severity::Bug => "BUG",
         Severity::Error => "ERROR",

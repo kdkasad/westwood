@@ -138,13 +138,8 @@ fn expect_one<T>(mut i: T) -> <T as Iterator>::Item
 where
     T: Iterator,
 {
-    let item = i
-        .next()
-        .expect("Expected iterator to have exactly one item");
-    assert!(
-        i.next().is_none(),
-        "Expected iterator to have exactly one item"
-    );
+    let item = i.next().expect("Expected iterator to have exactly one item");
+    assert!(i.next().is_none(), "Expected iterator to have exactly one item");
     item
 }
 
@@ -168,10 +163,7 @@ fn check_single_space_between(
         Diagnostic::warning()
             .with_code("III:A")
             .with_message(message.to_owned())
-            .with_labels(vec![Label::primary(
-                (),
-                left.start_byte()..right.end_byte(),
-            )]),
+            .with_labels(vec![Label::primary((), left.start_byte()..right.end_byte())]),
     )
 }
 

@@ -80,10 +80,7 @@ impl<'src> QueryHelper<'src> {
         let mut captures = cursor.captures(&self.query, self.tree.root_node(), self.code);
         while let Some((qmatch, capture_index_within_match)) = captures.next() {
             let custom_predicates = self.query.general_predicates(qmatch.pattern_index);
-            if !custom_predicates
-                .iter()
-                .all(|pred| self.predicate_matches(pred, qmatch))
-            {
+            if !custom_predicates.iter().all(|pred| self.predicate_matches(pred, qmatch)) {
                 continue;
             }
             let capture = qmatch.captures[*capture_index_within_match];
@@ -106,10 +103,7 @@ impl<'src> QueryHelper<'src> {
         let mut matches = cursor.matches(&self.query, self.tree.root_node(), self.code);
         while let Some(qmatch) = matches.next() {
             let custom_predicates = self.query.general_predicates(qmatch.pattern_index);
-            if !custom_predicates
-                .iter()
-                .all(|pred| self.predicate_matches(pred, qmatch))
-            {
+            if !custom_predicates.iter().all(|pred| self.predicate_matches(pred, qmatch)) {
                 continue;
             }
             handler(qmatch);
@@ -127,9 +121,8 @@ impl<'src> QueryHelper<'src> {
 
         // If the operator starts with #not- then we simply perform the regular operator and negate
         // it when returning.
-        let (op, negate) = orig_op
-            .strip_prefix("not-")
-            .map_or((orig_op, false), |rest| (rest, true));
+        let (op, negate) =
+            orig_op.strip_prefix("not-").map_or((orig_op, false), |rest| (rest, true));
 
         let result = match op {
             // Matches if any ancestor of the captured node is of the given kind
@@ -159,10 +152,7 @@ impl<'src> QueryHelper<'src> {
                     }
                     found
                 } else {
-                    panic!(
-                        "Invalid arguments to #{}. Expected a capture and a string.",
-                        orig_op
-                    );
+                    panic!("Invalid arguments to #{}. Expected a capture and a string.", orig_op);
                 }
             }
 
@@ -179,14 +169,9 @@ impl<'src> QueryHelper<'src> {
                         captured_nodes.next().is_none(),
                         "Expected no more than one captured node"
                     );
-                    target
-                        .parent()
-                        .is_some_and(|parent| parent.kind() == kind.as_ref())
+                    target.parent().is_some_and(|parent| parent.kind() == kind.as_ref())
                 } else {
-                    panic!(
-                        "Invalid arguments to #{}. Expected a capture and a string.",
-                        orig_op
-                    );
+                    panic!("Invalid arguments to #{}. Expected a capture and a string.", orig_op);
                 }
             }
 
@@ -319,9 +304,7 @@ mod test {
         ];
         for (code, expected_name) in tests {
             let mut parser = Parser::new();
-            parser
-                .set_language(&tree_sitter_c::LANGUAGE.into())
-                .unwrap();
+            parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
             let tree = parser.parse(code.as_bytes(), None).unwrap();
             let helper =
                 QueryHelper::new("(function_definition) @function", &tree, code.as_bytes());
