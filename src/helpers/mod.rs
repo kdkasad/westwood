@@ -59,10 +59,25 @@ impl<'src> QueryHelper<'src> {
 
     /// Returns the index for the capture with the given name, or panics if there is no capture
     /// with such a name.
-    pub fn index_for_capture(&self, name: &str) -> u32 {
+    pub fn expect_index_for_capture(&self, name: &str) -> u32 {
         self.query
             .capture_index_for_name(name)
             .unwrap_or_else(|| panic!("Query has no capture named `{}'", name))
+    }
+
+    /// Returns the node captured by the capture with the given index. To get an index from
+    /// a capture name, use [`expect_index_for_capture()`][Self::expect_index_for_capture].
+    ///
+    /// Panics if the given capture does not have exactly one node.
+    pub fn expect_node_for_capture_index(
+        &self,
+        qmatch: &QueryMatch<'_, 'src>,
+        capture_index: u32,
+    ) -> Node<'src> {
+        let mut nodes = qmatch.nodes_for_capture_index(capture_index);
+        let node = nodes.next().expect("Expected exactly one node for capture");
+        assert!(nodes.next().is_none(), "Expected exactly one node for capture");
+        node
     }
 
     /// Executes the query and calls a callback for each capture obtained by the query.
