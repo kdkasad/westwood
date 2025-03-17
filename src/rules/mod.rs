@@ -21,6 +21,7 @@ pub mod rule2a;
 pub mod rule2b;
 pub mod rule3a;
 pub mod rule3b;
+pub mod rule3c;
 
 use self::api::Rule;
 
@@ -36,5 +37,6 @@ pub fn get_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rule2b::Rule2b {}),
         Box::new(rule3a::Rule3a {}),
         Box::new(rule3b::Rule3b {}),
+        Box::new(rule3c::Rule3c {}),
     ]
 }
