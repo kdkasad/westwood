@@ -59,7 +59,9 @@ const QUERY_STR_UNARY: &str = indoc! {
         argument: _ @next)
     (pointer_declarator
         "*" @unary-operator
-        declarator: _ @next)
+        .
+        ; We grab the next child because there can be type specifiers before the declarator
+        _ @next)
     "#
 };
 
@@ -253,4 +255,139 @@ fn is_single_space_between(left: Node, right: Node, code: &[u8]) -> bool {
 mod tests {
     // TODO: Test the actual lints produced, because not all of the logic for this rule is
     // encapsulated in the query.
+
+    use std::process::ExitCode;
+
+    use indoc::indoc;
+
+    use crate::helpers::testing::test_captures;
+
+    use super::{QUERY_STR_ARRAY, QUERY_STR_BINARY, QUERY_STR_FIELD, QUERY_STR_UNARY};
+
+    #[test]
+    fn binary_op_captures() -> ExitCode {
+        let input = indoc! {
+            /* c */
+            r#"
+            int main() {
+                1 + 2;
+                //!? prev
+                  //!? binop
+                    //!? next
+                1<2;
+                //!? prev
+                 //!? binop
+                  //!? next
+                1
+                //!? prev
+                &&
+                //!? binop
+                2;
+                //!? next
+                1
+                //!? prev
+                  &&
+                  //!? binop
+                  2;
+                  //!? next
+                if ((argc >= 3) &&
+                     //!? prev
+                          //!? binop
+                             //!? next
+                    //!? prev
+                                //!? binop
+                    !strcmp(argv[1], argv[2])) {
+                    //!? next
+                }
+            }
+            "#
+        }
+        .replace("binop", "binary-operator");
+        test_captures(QUERY_STR_BINARY, &input)
+    }
+
+    #[test]
+    fn unary_op_captures() -> ExitCode {
+        let input = indoc! {
+            /* c */ r#"
+            int main(int argc) {
+                const char *const str = "Hello, world!";
+                           //!? unary-operator
+                            //!? next
+                int* p = &argc;
+                   //!? unary-operator
+                     //!? next
+                         //!? unary-operator
+                          //!? next
+                int * p = & argc;
+                    //!? unary-operator
+                      //!? next
+                          //!? unary-operator
+                            //!? next
+                (void) */* why is there a comment here */ argc;
+                       //!? unary-operator
+                                                          //!? next
+            }
+            "#
+        };
+        test_captures(QUERY_STR_UNARY, input)
+    }
+
+    #[test]
+    fn field_op_captures() -> ExitCode {
+        let input = indoc! {
+            /* c */ r#"
+            int main(int argc) {
+                a->b;
+                //!? prev
+                 //!? field-operator
+                   //!? next
+                a -> b;
+                //!? prev
+                  //!? field-operator
+                     //!? next
+                (*c) . b;
+                //!? prev
+                     //!? field-operator
+                       //!? next
+                (*c).b.x;
+                //!? prev prev
+                    //!? field-operator
+                     //!? next
+                      //!? field-operator
+                       //!? next
+            }
+            "#
+        };
+        test_captures(QUERY_STR_FIELD, input)
+    }
+
+    #[test]
+    fn array_subscript_captures() -> ExitCode {
+        let input = indoc! {
+            /* c */
+            r#"
+            int main(int argc, char *argv[]) {
+                                     //!? prev
+                                         //!? array-bracket-left
+                int arr[10];
+                    //!? prev
+                       //!? array-bracket-left
+                int arr[3] = { 1, 2, 3 };
+                    //!? prev
+                       //!? array-bracket-left
+                char *strings[3] = { "yes", "no", "maybe" };
+                      //!? prev
+                             //!? array-bracket-left
+                char (*stringptr) [3] = "no";
+                     //!? prev
+                                  //!? array-bracket-left
+                printf("%s\n", strings [ 1 ]);
+                               //!? prev
+                                       //!? array-bracket-left
+            }
+            "#
+        };
+        test_captures(QUERY_STR_ARRAY, input)
+    }
 }
