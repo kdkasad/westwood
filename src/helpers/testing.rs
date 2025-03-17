@@ -14,7 +14,7 @@
 
 //! Helpers for unit testing.
 
-use std::collections::{HashMap, HashSet};
+use std::{collections::HashMap, process::ExitCode};
 
 use tree_sitter::Parser;
 
@@ -80,10 +80,15 @@ use super::QueryHelper;
 /// test_captures(query, input);
 /// ```
 ///
-pub fn test_captures(query: &str, input: &str) {
+#[must_use]
+pub fn test_captures(query: &str, input: &str) -> ExitCode {
+    // We describe an actual/expected capture using the label and the (row, column) pair
+    type CaptureDescriptor<'a> = (&'a str, usize, usize);
+
     // Parse input into code and test specs
     let mut code_lines: Vec<&str> = Vec::new();
-    let mut test_specs: HashMap<(usize, usize), HashSet<&str>> = HashMap::new();
+    // Map of captures to the expected number of that capture
+    let mut test_specs: HashMap<CaptureDescriptor, usize> = HashMap::new();
     for line in input.lines() {
         let trimmed_line = line.trim_start();
         if trimmed_line.starts_with("//!?") {
@@ -91,8 +96,10 @@ pub fn test_captures(query: &str, input: &str) {
             // Get start column of comment
             let col = line.len() - trimmed_line.len();
             // Split into parts and skip "//!?" part
-            let labels: HashSet<&str> = trimmed_line.split_whitespace().skip(1).collect();
-            assert!(test_specs.insert((row, col), labels).is_none());
+            for label in trimmed_line.split_whitespace().skip(1) {
+                let key = (label, row, col);
+                *test_specs.entry(key).or_insert(0) += 1;
+            }
         } else {
             code_lines.push(line);
         }
@@ -104,27 +111,31 @@ pub fn test_captures(query: &str, input: &str) {
     parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
     let tree = parser.parse(&code, None).unwrap();
     let helper = QueryHelper::new(query, &tree, code.as_bytes());
+    let mut failed = false;
     helper.for_each_capture(|label, capture| {
         let start = capture.node.start_position();
-        if let Some(set) = test_specs.get_mut(&(start.row, start.column)) {
-            if set.contains(label) {
-                set.remove(label);
-                if set.is_empty() {
-                    test_specs.remove(&(start.row, start.column));
-                }
-            } else {
-                panic!(
+        let key = (label, start.row, start.column);
+        match test_specs.get_mut(&key) {
+            Some(expected_count_ptr) if *expected_count_ptr > 0 => {
+                *expected_count_ptr -= 1;
+            }
+            _ => {
+                eprintln!(
                     "Unexpected match for @{} at row {} column {}",
                     label, start.row, start.column
                 );
+                failed = true;
             }
-        } else {
-            panic!("Unexpected match for @{} at row {} column {}", label, start.row, start.column);
         }
     });
-    for ((row, col), set) in test_specs {
-        if let Some(label) = set.iter().next() {
-            panic!("Expected @{} at row {} column {}", label, row, col);
+    for (&(label, row, col), &expected_count) in test_specs.iter() {
+        if expected_count > 0 {
+            eprintln!("Expected @{} at row {} column {}", label, row, col);
+            failed = true;
         }
+    }
+    match failed {
+        true => ExitCode::FAILURE,
+        false => ExitCode::SUCCESS,
     }
 }

@@ -161,6 +161,8 @@ mod tests {
     // TODO: Test the actual lints produced, because not all of the logic for this rule is
     // encapsulated in the query.
 
+    use std::process::ExitCode;
+
     use indoc::indoc;
 
     use crate::helpers::testing::test_captures;
@@ -168,7 +170,7 @@ mod tests {
     use super::QUERY_STR;
 
     #[test]
-    fn rule3a_captures() {
+    fn rule3a_captures() -> ExitCode {
         let input = indoc! {
             /* c */
             r#"
@@ -302,6 +304,6 @@ mod tests {
             }
             "#
         };
-        test_captures(QUERY_STR, input);
+        test_captures(QUERY_STR, input)
     }
 }

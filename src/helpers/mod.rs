@@ -86,9 +86,9 @@ impl<'src> QueryHelper<'src> {
     ///
     /// - `handler`: Callback to execute for each capture.
     ///   The arguments to the callback are the name of the capture and the [QueryCapture].
-    pub fn for_each_capture<F>(&self, mut handler: F)
+    pub fn for_each_capture<'a, F>(&'a self, mut handler: F)
     where
-        F: FnMut(&str, QueryCapture),
+        F: FnMut(&'a str, QueryCapture),
     {
         let mut cursor = QueryCursor::new();
         let capture_names = self.query.capture_names();
@@ -241,6 +241,8 @@ pub fn indent_width(line: &str) -> usize {
 
 #[cfg(test)]
 mod test {
+    use std::process::ExitCode;
+
     use super::{testing::test_captures, QueryHelper};
 
     use indoc::indoc;
@@ -249,7 +251,7 @@ mod test {
 
     #[test]
     /// Test the `#has-ancestor?` custom predicate.
-    fn test_has_ancestor() {
+    fn test_has_ancestor() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int a;
                 //!? outfunc
@@ -277,12 +279,12 @@ mod test {
             ((identifier) @inif
                 (#has-ancestor? @inif if_statement))
         "# };
-        test_captures(query, input);
+        test_captures(query, input)
     }
 
     #[test]
     /// Test the `#has-parent?` custom predicate.
-    fn test_has_parent() {
+    fn test_has_parent() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int a = 0;
             //!? toplevel
@@ -303,7 +305,7 @@ mod test {
             ((number_literal) @number
                 (#not-has-parent? @number return_statement))
         "# };
-        test_captures(query, input);
+        test_captures(query, input)
     }
 
     #[test]
