@@ -262,13 +262,16 @@ impl<'a> Iterator for LinesWithPosition<'a> {
         if self.remaining_input.is_empty() {
             return None;
         }
-        // TODO: Support \r\n line endings
         let start_index = self.index;
-        let eol_index = self.remaining_input.find('\n').unwrap_or(self.remaining_input.len());
+        let mut eol_index = self.remaining_input.find('\n').unwrap_or(self.remaining_input.len());
         let mut next_line_start = eol_index;
         if eol_index != self.remaining_input.len() {
             // Skip newline
             next_line_start += 1;
+        }
+        // If the byte before the '\n' is a '\r', then cut that off as well.
+        if eol_index > 0 && self.remaining_input.as_bytes()[eol_index - 1] == b'\r' {
+            eol_index -= 1;
         }
         let line = &self.remaining_input[..eol_index];
         self.remaining_input = &self.remaining_input[next_line_start..];
@@ -337,7 +340,7 @@ impl<I: Iterator<Item = Range>> Iterator for RangeCollapser<I> {
 mod test {
     use std::process::ExitCode;
 
-    use super::{testing::test_captures, QueryHelper, RangeCollapser};
+    use super::{testing::test_captures, LinesWithPosition, QueryHelper, RangeCollapser};
 
     use indoc::indoc;
     use pretty_assertions::assert_eq;
@@ -475,5 +478,22 @@ mod test {
         assert_eq!(ranges[2].start_point, group2.start_point);
         assert_eq!(ranges[3].end_byte, group2.end_byte);
         assert_eq!(ranges[3].end_point, group2.end_point);
+    }
+
+    /// Tests [LinesWithPosition] on an input containing:
+    /// - empty lines
+    /// - non-empty lines
+    /// - `\n` (LF) line endings
+    /// - `\r\n` (CRLF) line endings
+    #[test]
+    fn lines_with_position() {
+        let text = "abc\ndef\r\n\n\r\nghi\n";
+        let mut lines = LinesWithPosition::from(text);
+        assert_eq!(lines.next(), Some(("abc", 0)));
+        assert_eq!(lines.next(), Some(("def", 4)));
+        assert_eq!(lines.next(), Some(("", 9)));
+        assert_eq!(lines.next(), Some(("", 10)));
+        assert_eq!(lines.next(), Some(("ghi", 12)));
+        assert_eq!(lines.next(), None);
     }
 }

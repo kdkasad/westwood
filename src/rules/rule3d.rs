@@ -249,9 +249,8 @@ impl Rule for Rule3d {
 /// included in the node's range.
 fn range_without_trailing_eol(mut range: Range<usize>, code: &[u8]) -> Range<usize> {
     match &code[(range.end - 2)..range.end] {
-        // \r = 0x0d, \n = 0x0a
-        [0x0d, 0x0a] => range.end -= 2,
-        [_, 0x0a] => range.end -= 1,
+        [b'\r', b'\n'] => range.end -= 2,
+        [_, b'\n'] => range.end -= 1,
         _ => (),
     }
     range
