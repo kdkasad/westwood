@@ -38,6 +38,7 @@
 //!  - that all `#define` statements within one function are grouped together.
 //!
 //! It should also (but does not currently) check
+//!  - that all `#define` statements in a function come at the start of the function, and
 //!  - that macros defined in a function are undefined at the end of the function.
 
 use std::ops::Range;
