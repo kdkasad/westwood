@@ -88,7 +88,7 @@ impl<'src> QueryHelper<'src> {
     ///   The arguments to the callback are the name of the capture and the [QueryCapture].
     pub fn for_each_capture<'a, F>(&'a self, mut handler: F)
     where
-        F: FnMut(&'a str, QueryCapture),
+        F: FnMut(&'a str, QueryCapture<'a>),
     {
         let mut cursor = QueryCursor::new();
         let capture_names = self.query.capture_names();
@@ -287,6 +287,7 @@ impl<'a> Iterator for LinesWithPosition<'a> {
 /// ```text
 /// 1..5, 6..7, 8..10
 /// ```
+#[derive(Clone, Debug)]
 pub struct RangeCollapser<I: Iterator<Item = Range>> {
     src: I,
     current_range: Option<Range>,

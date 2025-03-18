@@ -22,6 +22,7 @@ pub mod rule2b;
 pub mod rule3a;
 pub mod rule3b;
 pub mod rule3c;
+pub mod rule3d;
 pub mod rule3e;
 pub mod rule3f;
 
@@ -40,6 +41,7 @@ pub fn get_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rule3a::Rule3a {}),
         Box::new(rule3b::Rule3b {}),
         Box::new(rule3c::Rule3c {}),
+        Box::new(rule3d::Rule3d {}),
         Box::new(rule3e::Rule3e {}),
         Box::new(rule3f::Rule3f {}),
     ]
