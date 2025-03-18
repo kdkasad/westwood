@@ -239,6 +239,44 @@ pub fn indent_width(line: &str) -> usize {
         .sum()
 }
 
+/// Iterator over the lines in a string while keeping track of the byte index within the source of
+/// the start of each line.
+pub struct LinesWithPosition<'a> {
+    remaining_input: &'a str,
+    index: usize,
+}
+
+impl<'a> From<&'a str> for LinesWithPosition<'a> {
+    fn from(value: &'a str) -> Self {
+        Self {
+            remaining_input: value,
+            index: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for LinesWithPosition<'a> {
+    type Item = (&'a str, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining_input.is_empty() {
+            return None;
+        }
+        // TODO: Support \r\n line endings
+        let start_index = self.index;
+        let eol_index = self.remaining_input.find('\n').unwrap_or(self.remaining_input.len());
+        let mut next_line_start = eol_index;
+        if eol_index != self.remaining_input.len() {
+            // Skip newline
+            next_line_start += 1;
+        }
+        let line = &self.remaining_input[..eol_index];
+        self.remaining_input = &self.remaining_input[next_line_start..];
+        self.index += next_line_start;
+        Some((line, start_index))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::process::ExitCode;
