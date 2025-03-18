@@ -15,7 +15,7 @@
 pub mod testing;
 
 use tree_sitter::{
-    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg,
+    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg, Range,
     StreamingIterator as _, Tree,
 };
 use unicode_width::UnicodeWidthChar;
@@ -277,15 +277,70 @@ impl<'a> Iterator for LinesWithPosition<'a> {
     }
 }
 
+/// Transforms an iterator over [ranges][Range] by collapsing adjacent ranges.
+///
+/// For example (using simple numeric ranges), the input:
+/// ```text
+/// 1..2, 2..3, 3..5, 6..7, 8..9, 9..10
+/// ```
+/// would be transformed by the [RangeCollapser] into:
+/// ```text
+/// 1..5, 6..7, 8..10
+/// ```
+pub struct RangeCollapser<I: Iterator<Item = Range>> {
+    src: I,
+    current_range: Option<Range>,
+}
+
+impl<I, J> From<J> for RangeCollapser<I>
+where
+    I: Iterator<Item = Range>,
+    J: IntoIterator<IntoIter = I>,
+{
+    fn from(value: J) -> Self {
+        Self {
+            src: value.into_iter(),
+            current_range: None,
+        }
+    }
+}
+
+impl<I: Iterator<Item = Range>> Iterator for RangeCollapser<I> {
+    type Item = Range;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.src.next() {
+                // If there is no next range, return the current range.
+                None => return self.current_range.take(),
+                Some(next) => match self.current_range.as_mut() {
+                    Some(current) => {
+                        if current.end_point == next.start_point {
+                            // If adjacent, update the current range's end point.
+                            current.end_point = next.end_point;
+                            current.end_byte = next.end_byte;
+                        } else {
+                            // If not adjacent, return the old range and start tracking from the
+                            // next range.
+                            return self.current_range.replace(next);
+                        }
+                    }
+                    None => self.current_range = Some(next),
+                },
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::process::ExitCode;
 
-    use super::{testing::test_captures, QueryHelper};
+    use super::{testing::test_captures, QueryHelper, RangeCollapser};
 
     use indoc::indoc;
     use pretty_assertions::assert_eq;
-    use tree_sitter::Parser;
+    use tree_sitter::{Parser, Range};
 
     #[test]
     /// Test the `#has-ancestor?` custom predicate.
@@ -388,5 +443,36 @@ mod test {
         for (line, expected_indent) in tests {
             assert_eq!(expected_indent, super::indent_width(line));
         }
+    }
+
+    #[test]
+    fn range_collapser() {
+        let code = indoc! {
+            /* c */ r#"
+            #define A 1
+            #define B 2
+
+            #define C 1
+            #define D 2
+            "#
+        };
+        let mut ranges: Vec<Range> = Vec::with_capacity(4);
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+        let tree = parser.parse(code.as_bytes(), None).unwrap();
+        let helper = QueryHelper::new("(preproc_def) @define", &tree, code.as_bytes());
+        helper.for_each_capture(|_label, capture| ranges.push(capture.node.range()));
+        let mut collapser = RangeCollapser::from(ranges.clone());
+        let group1 = collapser.next().unwrap();
+        let group2 = collapser.next().unwrap();
+        assert!(collapser.next().is_none());
+        assert_eq!(ranges[0].start_byte, group1.start_byte);
+        assert_eq!(ranges[0].start_point, group1.start_point);
+        assert_eq!(ranges[1].end_byte, group1.end_byte);
+        assert_eq!(ranges[1].end_point, group1.end_point);
+        assert_eq!(ranges[2].start_byte, group2.start_byte);
+        assert_eq!(ranges[2].start_point, group2.start_point);
+        assert_eq!(ranges[3].end_byte, group2.end_byte);
+        assert_eq!(ranges[3].end_point, group2.end_point);
     }
 }
