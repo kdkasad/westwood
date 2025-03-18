@@ -97,7 +97,11 @@ fn main() -> ExitCode {
 
     // Create diagnostic writer & file source
     let writer = StandardStream::stdout(ColorChoice::Auto);
-    let config = term::Config::default();
+    // TODO: Detect color (and maybe box drawing) support
+    let config = term::Config {
+        tab_width: 8,
+        ..Default::default()
+    };
     let files = SimpleFile::new(filename, &code);
 
     // Do checks
