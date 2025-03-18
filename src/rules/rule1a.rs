@@ -122,6 +122,8 @@ fn guess_lower_snake_case(name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use std::process::ExitCode;
+
     use indoc::indoc;
 
     use crate::helpers::testing::test_captures;
@@ -141,7 +143,7 @@ mod tests {
     }
 
     #[test]
-    fn rule1a() {
+    fn rule1a() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int Name;
                 //!? name
@@ -170,6 +172,6 @@ mod tests {
             } MyType;
               //!? name
         "#};
-        test_captures(super::QUERY_STR, input);
+        test_captures(super::QUERY_STR, input)
     }
 }

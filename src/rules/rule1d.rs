@@ -112,6 +112,8 @@ impl Rule for Rule1d {
 
 #[cfg(test)]
 mod tests {
+    use std::process::ExitCode;
+
     use crate::helpers::testing::test_captures;
 
     use indoc::indoc;
@@ -122,7 +124,7 @@ mod tests {
     // encapsulated in the query.
 
     #[test]
-    fn rule1d() {
+    fn rule1d() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int an_int;
             //!? declaration.top_level
@@ -161,6 +163,6 @@ mod tests {
             } another_global;
               //!? global.no_g_prefix
         "#};
-        test_captures(QUERY_STR, input);
+        test_captures(QUERY_STR, input)
     }
 }

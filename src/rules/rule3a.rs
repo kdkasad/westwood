@@ -93,18 +93,18 @@ impl Rule for Rule3a {
 
         // Part 1: Space between parentheses and braces
         let helper = QueryHelper::new(QUERY_STR, tree, code);
-        let keyword_capture_i = helper.index_for_capture("keyword");
-        let lparen_capture_i = helper.index_for_capture("lparen");
-        let rparen_capture_i = helper.index_for_capture("rparen");
-        let lbrace_capture_i = helper.index_for_capture("lbrace");
+        let keyword_capture_i = helper.expect_index_for_capture("keyword");
+        let lparen_capture_i = helper.expect_index_for_capture("lparen");
+        let rparen_capture_i = helper.expect_index_for_capture("rparen");
+        let lbrace_capture_i = helper.expect_index_for_capture("lbrace");
         helper.for_each_match(|qmatch| {
             // The last pattern checks for "do" statements, which do not have parentheses followed
             // by braces, so we skip this check if it's the last pattern.
             // TODO: Avoid using indices to figure this out.
             if qmatch.captures.len() == 4 {
                 // Check spacing between ) and {
-                let rparen = expect_one(qmatch.nodes_for_capture_index(rparen_capture_i));
-                let lbrace = expect_one(qmatch.nodes_for_capture_index(lbrace_capture_i));
+                let rparen = helper.expect_node_for_capture_index(qmatch, rparen_capture_i);
+                let lbrace = helper.expect_node_for_capture_index(qmatch, lbrace_capture_i);
                 let message =
                     "Expected a single space between the closing parenthesis and the opening brace";
                 if let Some(diagnostic) = check_single_space_between(rparen, lbrace, code, message)
@@ -117,8 +117,8 @@ impl Rule for Rule3a {
             }
 
             // Check spacing between keyword and (
-            let keyword = expect_one(qmatch.nodes_for_capture_index(keyword_capture_i));
-            let lparen = expect_one(qmatch.nodes_for_capture_index(lparen_capture_i));
+            let keyword = helper.expect_node_for_capture_index(qmatch, keyword_capture_i);
+            let lparen = helper.expect_node_for_capture_index(qmatch, lparen_capture_i);
             let message = format!(
                 "Expected a single space after `{}'",
                 keyword.utf8_text(code).expect("Code is not valid UTF-8")
@@ -130,17 +130,6 @@ impl Rule for Rule3a {
 
         diagnostics
     }
-}
-
-/// Returns the next item from the given iterator.
-/// Panics if the iterator does not have exactly one item.
-fn expect_one<T>(mut i: T) -> <T as Iterator>::Item
-where
-    T: Iterator,
-{
-    let item = i.next().expect("Expected iterator to have exactly one item");
-    assert!(i.next().is_none(), "Expected iterator to have exactly one item");
-    item
 }
 
 /// Returns a [Diagnostic] if there is not a single space separating the left and right nodes.
@@ -172,6 +161,8 @@ mod tests {
     // TODO: Test the actual lints produced, because not all of the logic for this rule is
     // encapsulated in the query.
 
+    use std::process::ExitCode;
+
     use indoc::indoc;
 
     use crate::helpers::testing::test_captures;
@@ -179,7 +170,7 @@ mod tests {
     use super::QUERY_STR;
 
     #[test]
-    fn rule3a_captures() {
+    fn rule3a_captures() -> ExitCode {
         let input = indoc! {
             /* c */
             r#"
@@ -313,6 +304,6 @@ mod tests {
             }
             "#
         };
-        test_captures(QUERY_STR, input);
+        test_captures(QUERY_STR, input)
     }
 }

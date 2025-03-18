@@ -15,7 +15,7 @@
 pub mod testing;
 
 use tree_sitter::{
-    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg,
+    Node, Query, QueryCapture, QueryCursor, QueryMatch, QueryPredicate, QueryPredicateArg, Range,
     StreamingIterator as _, Tree,
 };
 use unicode_width::UnicodeWidthChar;
@@ -59,10 +59,25 @@ impl<'src> QueryHelper<'src> {
 
     /// Returns the index for the capture with the given name, or panics if there is no capture
     /// with such a name.
-    pub fn index_for_capture(&self, name: &str) -> u32 {
+    pub fn expect_index_for_capture(&self, name: &str) -> u32 {
         self.query
             .capture_index_for_name(name)
             .unwrap_or_else(|| panic!("Query has no capture named `{}'", name))
+    }
+
+    /// Returns the node captured by the capture with the given index. To get an index from
+    /// a capture name, use [`expect_index_for_capture()`][Self::expect_index_for_capture].
+    ///
+    /// Panics if the given capture does not have exactly one node.
+    pub fn expect_node_for_capture_index(
+        &self,
+        qmatch: &QueryMatch<'_, 'src>,
+        capture_index: u32,
+    ) -> Node<'src> {
+        let mut nodes = qmatch.nodes_for_capture_index(capture_index);
+        let node = nodes.next().expect("Expected exactly one node for capture");
+        assert!(nodes.next().is_none(), "Expected exactly one node for capture");
+        node
     }
 
     /// Executes the query and calls a callback for each capture obtained by the query.
@@ -71,9 +86,9 @@ impl<'src> QueryHelper<'src> {
     ///
     /// - `handler`: Callback to execute for each capture.
     ///   The arguments to the callback are the name of the capture and the [QueryCapture].
-    pub fn for_each_capture<F>(&self, mut handler: F)
+    pub fn for_each_capture<'a, F>(&'a self, mut handler: F)
     where
-        F: FnMut(&str, QueryCapture),
+        F: FnMut(&'a str, QueryCapture<'a>),
     {
         let mut cursor = QueryCursor::new();
         let capture_names = self.query.capture_names();
@@ -224,17 +239,116 @@ pub fn indent_width(line: &str) -> usize {
         .sum()
 }
 
+/// Iterator over the lines in a string while keeping track of the byte index within the source of
+/// the start of each line.
+pub struct LinesWithPosition<'a> {
+    remaining_input: &'a str,
+    index: usize,
+}
+
+impl<'a> From<&'a str> for LinesWithPosition<'a> {
+    fn from(value: &'a str) -> Self {
+        Self {
+            remaining_input: value,
+            index: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for LinesWithPosition<'a> {
+    type Item = (&'a str, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.remaining_input.is_empty() {
+            return None;
+        }
+        let start_index = self.index;
+        let mut eol_index = self.remaining_input.find('\n').unwrap_or(self.remaining_input.len());
+        let mut next_line_start = eol_index;
+        if eol_index != self.remaining_input.len() {
+            // Skip newline
+            next_line_start += 1;
+        }
+        // If the byte before the '\n' is a '\r', then cut that off as well.
+        if eol_index > 0 && self.remaining_input.as_bytes()[eol_index - 1] == b'\r' {
+            eol_index -= 1;
+        }
+        let line = &self.remaining_input[..eol_index];
+        self.remaining_input = &self.remaining_input[next_line_start..];
+        self.index += next_line_start;
+        Some((line, start_index))
+    }
+}
+
+/// Transforms an iterator over [ranges][Range] by collapsing adjacent ranges.
+///
+/// For example (using simple numeric ranges), the input:
+/// ```text
+/// 1..2, 2..3, 3..5, 6..7, 8..9, 9..10
+/// ```
+/// would be transformed by the [RangeCollapser] into:
+/// ```text
+/// 1..5, 6..7, 8..10
+/// ```
+#[derive(Clone, Debug)]
+pub struct RangeCollapser<I: Iterator<Item = Range>> {
+    src: I,
+    current_range: Option<Range>,
+}
+
+impl<I, J> From<J> for RangeCollapser<I>
+where
+    I: Iterator<Item = Range>,
+    J: IntoIterator<IntoIter = I>,
+{
+    fn from(value: J) -> Self {
+        Self {
+            src: value.into_iter(),
+            current_range: None,
+        }
+    }
+}
+
+impl<I: Iterator<Item = Range>> Iterator for RangeCollapser<I> {
+    type Item = Range;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        loop {
+            match self.src.next() {
+                // If there is no next range, return the current range.
+                None => return self.current_range.take(),
+                Some(next) => match self.current_range.as_mut() {
+                    Some(current) => {
+                        if current.end_point == next.start_point {
+                            // If adjacent, update the current range's end point.
+                            current.end_point = next.end_point;
+                            current.end_byte = next.end_byte;
+                        } else {
+                            // If not adjacent, return the old range and start tracking from the
+                            // next range.
+                            return self.current_range.replace(next);
+                        }
+                    }
+                    None => self.current_range = Some(next),
+                },
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use super::{testing::test_captures, QueryHelper};
+    use std::process::ExitCode;
+
+    use super::{testing::test_captures, LinesWithPosition, QueryHelper, RangeCollapser};
 
     use indoc::indoc;
     use pretty_assertions::assert_eq;
-    use tree_sitter::Parser;
+    use tree_sitter::{Parser, Range};
 
     #[test]
     /// Test the `#has-ancestor?` custom predicate.
-    fn test_has_ancestor() {
+    fn test_has_ancestor() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int a;
                 //!? outfunc
@@ -262,12 +376,12 @@ mod test {
             ((identifier) @inif
                 (#has-ancestor? @inif if_statement))
         "# };
-        test_captures(query, input);
+        test_captures(query, input)
     }
 
     #[test]
     /// Test the `#has-parent?` custom predicate.
-    fn test_has_parent() {
+    fn test_has_parent() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int a = 0;
             //!? toplevel
@@ -288,7 +402,7 @@ mod test {
             ((number_literal) @number
                 (#not-has-parent? @number return_statement))
         "# };
-        test_captures(query, input);
+        test_captures(query, input)
     }
 
     #[test]
@@ -333,5 +447,53 @@ mod test {
         for (line, expected_indent) in tests {
             assert_eq!(expected_indent, super::indent_width(line));
         }
+    }
+
+    #[test]
+    fn range_collapser() {
+        let code = indoc! {
+            /* c */ r#"
+            #define A 1
+            #define B 2
+
+            #define C 1
+            #define D 2
+            "#
+        };
+        let mut ranges: Vec<Range> = Vec::with_capacity(4);
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+        let tree = parser.parse(code.as_bytes(), None).unwrap();
+        let helper = QueryHelper::new("(preproc_def) @define", &tree, code.as_bytes());
+        helper.for_each_capture(|_label, capture| ranges.push(capture.node.range()));
+        let mut collapser = RangeCollapser::from(ranges.clone());
+        let group1 = collapser.next().unwrap();
+        let group2 = collapser.next().unwrap();
+        assert!(collapser.next().is_none());
+        assert_eq!(ranges[0].start_byte, group1.start_byte);
+        assert_eq!(ranges[0].start_point, group1.start_point);
+        assert_eq!(ranges[1].end_byte, group1.end_byte);
+        assert_eq!(ranges[1].end_point, group1.end_point);
+        assert_eq!(ranges[2].start_byte, group2.start_byte);
+        assert_eq!(ranges[2].start_point, group2.start_point);
+        assert_eq!(ranges[3].end_byte, group2.end_byte);
+        assert_eq!(ranges[3].end_point, group2.end_point);
+    }
+
+    /// Tests [LinesWithPosition] on an input containing:
+    /// - empty lines
+    /// - non-empty lines
+    /// - `\n` (LF) line endings
+    /// - `\r\n` (CRLF) line endings
+    #[test]
+    fn lines_with_position() {
+        let text = "abc\ndef\r\n\n\r\nghi\n";
+        let mut lines = LinesWithPosition::from(text);
+        assert_eq!(lines.next(), Some(("abc", 0)));
+        assert_eq!(lines.next(), Some(("def", 4)));
+        assert_eq!(lines.next(), Some(("", 9)));
+        assert_eq!(lines.next(), Some(("", 10)));
+        assert_eq!(lines.next(), Some(("ghi", 12)));
+        assert_eq!(lines.next(), None);
     }
 }
