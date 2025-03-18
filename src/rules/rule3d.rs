@@ -47,7 +47,7 @@ use indoc::indoc;
 use tree_sitter::{Node, Range as TSRange, Tree};
 
 use crate::{
-    helpers::{function_definition_name, QueryHelper, RangeCollapser},
+    helpers::{function_definition_name, LinesWithPosition, QueryHelper, RangeCollapser},
     rules::api::Rule,
 };
 
@@ -154,8 +154,9 @@ impl Rule for Rule3d {
         }
 
         // Get lines of the source
-        let lines: Vec<&str> =
-            std::str::from_utf8(code).expect("Code is not valid UTF-8").lines().collect();
+        let lines: Vec<(&str, usize)> =
+            LinesWithPosition::from(std::str::from_utf8(code).expect("Code is not valid UTF-8"))
+                .collect();
 
         // Collapse #define statements into groups
         let define_groups = RangeCollapser::from(definitions.into_iter().map(|def| def.range()));
@@ -214,13 +215,20 @@ impl Rule for Rule3d {
             // We can't just use lines.get(...).is_none_or(...) because subtracting from
             // 0 will overflow, which causes a panic.
             let has_blank_before =
-                define.start_point.row == 0 || lines[define.start_point.row - 1].is_empty();
+                define.start_point.row == 0 || lines[define.start_point.row - 1].0.is_empty();
             if !has_blank_before {
+                // Get the byte range of the previous line to annotate
+                let (prev_line, prev_line_start) = lines[define.start_point.row - 1];
+                let prev_line_range = prev_line_start..(prev_line_start + prev_line.len());
                 diagnostics.push(
                     Diagnostic::warning()
                         .with_code("III:D")
                         .with_message("Expected blank line before #define statement(s)")
-                        .with_labels(vec![Label::primary((), print_range.clone())]),
+                        .with_labels(vec![
+                            Label::primary((), print_range.clone()),
+                            Label::secondary((), prev_line_range)
+                                .with_message("Previous line is non-blank"),
+                        ]),
                 );
             }
 
@@ -230,13 +238,20 @@ impl Rule for Rule3d {
                     0 => 0,
                     _ => 1,
                 };
-            let has_blank_after = lines.get(end_line).is_none_or(|line| line.is_empty());
+            let has_blank_after = lines.get(end_line).is_none_or(|(line, _pos)| line.is_empty());
             if !has_blank_after {
+                // Get byte range of next line to annotate
+                let (next_line, next_line_start) = lines[end_line];
+                let next_line_range = next_line_start..(next_line_start + next_line.len());
                 diagnostics.push(
                     Diagnostic::warning()
                         .with_code("III:D")
                         .with_message("Expected blank line after #define statement(s)")
-                        .with_labels(vec![Label::primary((), print_range)]),
+                        .with_labels(vec![
+                            Label::primary((), print_range),
+                            Label::secondary((), next_line_range)
+                                .with_message("Next line is non-blank"),
+                        ]),
                 );
             }
         }
