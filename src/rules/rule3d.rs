@@ -38,6 +38,7 @@
 //!  - that all `#define` statements within one function are grouped together.
 //!
 //! It should also (but does not currently) check
+//!  - that all `#define` statements in a function come at the start of the function, and
 //!  - that macros defined in a function are undefined at the end of the function.
 
 use std::ops::Range;
@@ -216,21 +217,14 @@ impl Rule for Rule3d {
             // 0 will overflow, which causes a panic.
             let has_blank_before =
                 define.start_point.row == 0 || lines[define.start_point.row - 1].0.is_empty();
-            if !has_blank_before {
-                // Get the byte range of the previous line to annotate
-                let (prev_line, prev_line_start) = lines[define.start_point.row - 1];
-                let prev_line_range = prev_line_start..(prev_line_start + prev_line.len());
-                diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:D")
-                        .with_message("Expected blank line before #define statement(s)")
-                        .with_labels(vec![
-                            Label::primary((), print_range.clone()),
-                            Label::secondary((), prev_line_range)
-                                .with_message("Previous line is non-blank"),
-                        ]),
-                );
-            }
+            // Byte range of the previous line so we can label it
+            let prev_line_range: Option<Range<usize>> = match has_blank_before {
+                true => None,
+                false => {
+                    let (prev_line, prev_line_start) = lines[define.start_point.row - 1];
+                    Some(prev_line_start..(prev_line_start + prev_line.len()))
+                }
+            };
 
             // If the #define does not end at the start of a line, take the next line
             let end_line = define.end_point.row
@@ -239,20 +233,63 @@ impl Rule for Rule3d {
                     _ => 1,
                 };
             let has_blank_after = lines.get(end_line).is_none_or(|(line, _pos)| line.is_empty());
-            if !has_blank_after {
-                // Get byte range of next line to annotate
-                let (next_line, next_line_start) = lines[end_line];
-                let next_line_range = next_line_start..(next_line_start + next_line.len());
-                diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:D")
-                        .with_message("Expected blank line after #define statement(s)")
-                        .with_labels(vec![
-                            Label::primary((), print_range),
-                            Label::secondary((), next_line_range)
-                                .with_message("Next line is non-blank"),
-                        ]),
-                );
+            // Byte range of the following line so we can label it
+            let next_line_range: Option<Range<usize>> = match has_blank_after {
+                true => None,
+                false => {
+                    let (next_line, next_line_start) = lines[end_line];
+                    Some(next_line_start..(next_line_start + next_line.len()))
+                }
+            };
+
+            // Produce diagnostic
+            match (has_blank_before, has_blank_after) {
+                // Good; no diagnostic.
+                (true, true) => (),
+
+                // Missing blank line before only.
+                (false, true) => {
+                    diagnostics.push(
+                        Diagnostic::warning()
+                            .with_code("III:D")
+                            .with_message("Expected blank line before #define statement(s)")
+                            .with_labels(vec![
+                                Label::primary((), print_range.clone()),
+                                Label::secondary((), prev_line_range.unwrap())
+                                    .with_message("Previous line is non-blank"),
+                            ]),
+                    );
+                }
+
+                // Missing blank line after only.
+                (true, false) => {
+                    diagnostics.push(
+                        Diagnostic::warning()
+                            .with_code("III:D")
+                            .with_message("Expected blank line after #define statement(s)")
+                            .with_labels(vec![
+                                Label::primary((), print_range),
+                                Label::secondary((), next_line_range.unwrap())
+                                    .with_message("Next line is non-blank"),
+                            ]),
+                    );
+                }
+
+                // Missing blank lines before and after.
+                (false, false) => {
+                    diagnostics.push(
+                        Diagnostic::warning()
+                            .with_code("III:D")
+                            .with_message("Expected blank lines surrounding #define statement(s)")
+                            .with_labels(vec![
+                                Label::primary((), print_range),
+                                Label::secondary((), prev_line_range.unwrap())
+                                    .with_message("Previous line is non-blank"),
+                                Label::secondary((), next_line_range.unwrap())
+                                    .with_message("Next line is non-blank"),
+                            ]),
+                    );
+                }
             }
         }
 
@@ -300,9 +337,8 @@ mod tests {
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule3d {};
         let diagnostics = rule.check(&tree, code.as_bytes());
-        // Expect 2 diagnostics: one for the non-blank line before the first #define and one for
-        // the non-blank line after the second #define.
-        assert_eq!(2, diagnostics.len());
+        // Expect 1 diagnostic for the whole group.
+        assert_eq!(1, diagnostics.len());
     }
 
     /// Ensures that if for some reason the last line in a file is a `#define` statement that does
