@@ -26,6 +26,9 @@ pub mod rule03d;
 pub mod rule03e;
 pub mod rule03f;
 pub mod rule11a;
+pub mod rule11b;
+
+use std::num::NonZeroUsize;
 
 use self::api::Rule;
 
@@ -46,5 +49,6 @@ pub fn get_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rule03e::Rule03e {}),
         Box::new(rule03f::Rule03f {}),
         Box::new(rule11a::Rule11a::new(Some(3))),
+        Box::new(rule11b::Rule11b::new(Some(NonZeroUsize::new(3).unwrap()))),
     ]
 }
