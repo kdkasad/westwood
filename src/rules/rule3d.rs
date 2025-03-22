@@ -116,11 +116,13 @@ impl Rule for Rule3d {
                     Diagnostic::warning()
                         .with_code("III:D")
                         .with_message("Global preprocessor definitions must be placed at the top of the file, before all functions")
-                        .with_labels(vec![
-                            Label::primary((), print_range).with_message("Macro(s) defined here"),
+                        .with_label(
+                            Label::primary((), print_range).with_message("Macro(s) defined here")
+                        )
+                        .with_label(
                             // SAFETY: We've already checked that first_func.is_some_and(...).
                             Label::secondary((), first_func.unwrap().byte_range()).with_message("First function defined here")
-                        ])
+                        )
                 );
             }
         }
@@ -131,26 +133,19 @@ impl Rule for Rule3d {
                 Diagnostic::warning()
                     .with_code("III:D")
                     .with_message("All top-level #define statements must be grouped together")
-                    .with_labels(
-                        global_define_groups
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, group)| {
-                                let range = range_without_trailing_eol(
-                                    group.start_byte..group.end_byte,
-                                    code,
-                                );
-                                if i == 0 {
-                                    Label::secondary((), range).with_message(
-                                        "First group of #define statements found here",
-                                    )
-                                } else {
-                                    Label::primary((), range)
-                                        .with_message("More #define statements found here")
-                                }
-                            })
-                            .collect(),
-                    ),
+                    .with_labels_iter(global_define_groups.into_iter().enumerate().map(
+                        |(i, group)| {
+                            let range =
+                                range_without_trailing_eol(group.start_byte..group.end_byte, code);
+                            if i == 0 {
+                                Label::secondary((), range)
+                                    .with_message("First group of #define statements found here")
+                            } else {
+                                Label::primary((), range)
+                                    .with_message("More #define statements found here")
+                            }
+                        },
+                    )),
             );
         }
 
@@ -180,24 +175,20 @@ impl Rule for Rule3d {
                             "All #define statements in each function must be grouped together",
                         )
                         .with_notes(vec![format!("In function `{}()'", function_name)])
-                        .with_labels(
-                            groups_in_function
-                                .into_iter()
-                                .enumerate()
-                                .map(|(i, define_group)| {
-                                    let range = define_group.start_byte..define_group.end_byte;
-                                    let print_range = range_without_trailing_eol(range, code);
-                                    if i == 0 {
-                                        Label::secondary((), print_range).with_message(
-                                            "First group of #define statements found here",
-                                        )
-                                    } else {
-                                        Label::primary((), print_range)
-                                            .with_message("More #define statements found here")
-                                    }
-                                })
-                                .collect(),
-                        ),
+                        .with_labels_iter(groups_in_function.into_iter().enumerate().map(
+                            |(i, define_group)| {
+                                let range = define_group.start_byte..define_group.end_byte;
+                                let print_range = range_without_trailing_eol(range, code);
+                                if i == 0 {
+                                    Label::secondary((), print_range).with_message(
+                                        "First group of #define statements found here",
+                                    )
+                                } else {
+                                    Label::primary((), print_range)
+                                        .with_message("More #define statements found here")
+                                }
+                            },
+                        )),
                 );
             }
         }
@@ -253,11 +244,11 @@ impl Rule for Rule3d {
                         Diagnostic::warning()
                             .with_code("III:D")
                             .with_message("Expected blank line before #define statement(s)")
-                            .with_labels(vec![
-                                Label::primary((), print_range.clone()),
+                            .with_label(Label::primary((), print_range.clone()))
+                            .with_label(
                                 Label::secondary((), prev_line_range.unwrap())
                                     .with_message("Previous line is non-blank"),
-                            ]),
+                            ),
                     );
                 }
 
@@ -267,11 +258,11 @@ impl Rule for Rule3d {
                         Diagnostic::warning()
                             .with_code("III:D")
                             .with_message("Expected blank line after #define statement(s)")
-                            .with_labels(vec![
-                                Label::primary((), print_range),
+                            .with_label(Label::primary((), print_range))
+                            .with_label(
                                 Label::secondary((), next_line_range.unwrap())
                                     .with_message("Next line is non-blank"),
-                            ]),
+                            ),
                     );
                 }
 
@@ -281,13 +272,15 @@ impl Rule for Rule3d {
                         Diagnostic::warning()
                             .with_code("III:D")
                             .with_message("Expected blank lines surrounding #define statement(s)")
-                            .with_labels(vec![
-                                Label::primary((), print_range),
+                            .with_label(Label::primary((), print_range))
+                            .with_label(
                                 Label::secondary((), prev_line_range.unwrap())
                                     .with_message("Previous line is non-blank"),
+                            )
+                            .with_label(
                                 Label::secondary((), next_line_range.unwrap())
                                     .with_message("Next line is non-blank"),
-                            ]),
+                            ),
                     );
                 }
             }

@@ -89,10 +89,10 @@ impl Rule for Rule1c {
                 ),
                 _ => unreachable!(),
             };
-            let mut diagnostic =
-                Diagnostic::warning().with_code("I:C").with_message(message).with_labels(vec![
-                    Label::primary((), capture.node.byte_range()).with_message(label),
-                ]);
+            let mut diagnostic = Diagnostic::warning()
+                .with_code("I:C")
+                .with_message(message)
+                .with_label(Label::primary((), capture.node.byte_range()).with_message(label));
             if let Some(fix) = fix {
                 diagnostic.labels.push(
                     Label::secondary((), capture.node.byte_range())

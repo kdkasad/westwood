@@ -80,16 +80,16 @@ impl Rule for Rule1a {
             let diagnostic = Diagnostic::warning()
                 .with_message(format!("{} names must be in lower snake case.", nametype))
                 .with_code("I:A")
-                .with_labels(vec![
+                .with_label(
                     Label::primary((), capture.node.byte_range())
                         .with_message("Name contains uppercase character(s)"),
-                    Label::secondary((), capture.node.byte_range()).with_message(format!(
-                        "Perhaps you meant `{}'",
-                        guess_lower_snake_case(
-                            capture.node.utf8_text(code).expect("Code is not valid UTF-8")
-                        )
-                    )),
-                ]);
+                )
+                .with_label(Label::secondary((), capture.node.byte_range()).with_message(format!(
+                    "Perhaps you meant `{}'",
+                    guess_lower_snake_case(
+                        capture.node.utf8_text(code).expect("Code is not valid UTF-8")
+                    )
+                )));
             diagnostics.push(diagnostic);
         });
         diagnostics

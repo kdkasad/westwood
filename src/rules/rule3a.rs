@@ -152,7 +152,7 @@ fn check_single_space_between(
         Diagnostic::warning()
             .with_code("III:A")
             .with_message(message.to_owned())
-            .with_labels(vec![Label::primary((), left.start_byte()..right.end_byte())]),
+            .with_label(Label::primary((), left.start_byte()..right.end_byte())),
     )
 }
 

@@ -42,7 +42,7 @@ impl Rule for Rule3e {
                     Diagnostic::warning()
                         .with_code("III:E")
                         .with_message("Line contains trailing whitespace")
-                        .with_labels(vec![Label::primary((), start..end)]),
+                        .with_label(Label::primary((), start..end)),
                 );
             }
         }

@@ -67,15 +67,14 @@ impl Rule for Rule2b {
                         MAX_PAGES_PER_FUNCTION,
                         MAX_PAGES_PER_FUNCTION * PAGE_SIZE
                     );
-                    let diagnostic = Diagnostic::warning()
-                        .with_code("II:B")
-                        .with_message(message)
-                        .with_labels(vec![Label::primary((), capture.node.byte_range())
-                            .with_message(format!(
+                    let diagnostic =
+                        Diagnostic::warning().with_code("II:B").with_message(message).with_label(
+                            Label::primary((), capture.node.byte_range()).with_message(format!(
                                 "Function `{}()' is {} lines long",
                                 function_definition_name(capture.node, code),
                                 length
-                            ))]);
+                            )),
+                        );
                     diagnostics.push(diagnostic);
                 }
             }
@@ -122,12 +121,10 @@ mod tests {
                     MAX_PAGES_PER_FUNCTION,
                     PAGE_SIZE * MAX_PAGES_PER_FUNCTION
                 ))
-                .with_labels(vec![
-                    Label::primary((), 0..(code.len() - 1)).with_message(format!(
-                        "Function `main()' is {} lines long",
-                        2 + MAX_PAGES_PER_FUNCTION * PAGE_SIZE
-                    ))
-                ])]
+                .with_label(Label::primary((), 0..(code.len() - 1)).with_message(format!(
+                    "Function `main()' is {} lines long",
+                    2 + MAX_PAGES_PER_FUNCTION * PAGE_SIZE
+                )))]
         );
     }
 }
