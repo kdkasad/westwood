@@ -61,7 +61,7 @@ impl Rule for Rule2a {
                 let diagnostic = Diagnostic::warning()
                     .with_code("II:A")
                     .with_message("Line length exceeds 80 columns.")
-                    .with_labels(vec![Label::primary((), (index + 80)..(index + line.len()))]);
+                    .with_label(Label::primary((), (index + 80)..(index + line.len())));
                 diagnostics.push(diagnostic);
             }
         }

@@ -82,10 +82,7 @@ impl Rule for Rule3c {
                     Diagnostic::warning()
                         .with_code("III:C")
                         .with_message("Expected one space after internal commas and semicolons")
-                        .with_labels(vec![Label::primary(
-                            (),
-                            delim.start_byte()..next.start_byte(),
-                        )]),
+                        .with_label(Label::primary((), delim.start_byte()..next.start_byte())),
                 );
             }
         });

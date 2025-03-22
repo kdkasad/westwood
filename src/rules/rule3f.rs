@@ -61,10 +61,7 @@ impl Rule for Rule3f {
                     Diagnostic::warning()
                         .with_code("III:F")
                         .with_message("Expected no space between function and parenthesis")
-                        .with_labels(vec![Label::primary(
-                            (),
-                            function.end_byte()..paren.start_byte(),
-                        )]),
+                        .with_label(Label::primary((), function.end_byte()..paren.start_byte())),
                 );
             }
         });

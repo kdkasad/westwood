@@ -127,7 +127,7 @@ impl Rule for Rule3b {
                     Diagnostic::warning()
                         .with_code("III:B")
                         .with_message("Expected no space after unary operator")
-                        .with_labels(vec![Label::primary((), op.end_byte()..next.start_byte())]),
+                        .with_label(Label::primary((), op.end_byte()..next.start_byte())),
                 );
             }
         });
@@ -150,10 +150,7 @@ impl Rule for Rule3b {
                     Diagnostic::warning()
                         .with_code("III:B")
                         .with_message("Expected no space before array subscript")
-                        .with_labels(vec![Label::primary(
-                            (),
-                            prev.end_byte()..lbrack.start_byte(),
-                        )]),
+                        .with_label(Label::primary((), prev.end_byte()..lbrack.start_byte())),
                 );
             }
         });
@@ -210,7 +207,7 @@ fn check_binary_op_spacing(
         Diagnostic::warning()
             .with_code("III:B")
             .with_message(message)
-            .with_labels(vec![Label::primary((), range)]),
+            .with_label(Label::primary((), range)),
     )
 }
 
@@ -241,7 +238,7 @@ fn check_field_op_spacing(op: Node, left: Node, right: Node) -> Option<Diagnosti
         Diagnostic::warning()
             .with_code("III:B")
             .with_message(message)
-            .with_labels(vec![Label::primary((), range)]),
+            .with_label(Label::primary((), range)),
     )
 }
 

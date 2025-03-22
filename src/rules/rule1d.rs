@@ -82,25 +82,35 @@ impl Rule for Rule1d {
             let diagnostic = match name {
                 "global.no_g_prefix" => {
                     let message = "Global variables must be prefixed with `g_'";
-                    Diagnostic::warning().with_code("I:D").with_message(message).with_labels(vec![
-                        Label::primary((), capture.node.byte_range())
-                            .with_message("Variable declared here"),
-                        Label::secondary((), capture.node.byte_range()).with_message(format!(
-                            "Perhaps you meant `g_{}'",
-                            capture.node.utf8_text(code).expect("Code is not valid UTF-8")
-                        )),
-                    ])
+                    Diagnostic::warning()
+                        .with_code("I:D")
+                        .with_message(message)
+                        .with_label(
+                            Label::primary((), capture.node.byte_range())
+                                .with_message("Variable declared here"),
+                        )
+                        .with_label(Label::secondary((), capture.node.byte_range()).with_message(
+                            format!(
+                                "Perhaps you meant `g_{}'",
+                                capture.node.utf8_text(code).expect("Code is not valid UTF-8")
+                            ),
+                        ))
                 }
                 "declaration.top_level" => {
                     let message =
                         "All top-level declarations must come before function definitions";
-                    Diagnostic::warning().with_code("I:D").with_message(message).with_labels(vec![
-                        Label::primary((), capture.node.byte_range())
-                            .with_message("Declaration occurs here"),
-                        // SAFETY: We will have returned if first_function_position is None.
-                        Label::secondary((), first_function_position.as_ref().unwrap().clone())
-                            .with_message("First function defined here"),
-                    ])
+                    Diagnostic::warning()
+                        .with_code("I:D")
+                        .with_message(message)
+                        .with_label(
+                            Label::primary((), capture.node.byte_range())
+                                .with_message("Declaration occurs here"),
+                        )
+                        .with_label(
+                            // SAFETY: We will have returned if first_function_position is None.
+                            Label::secondary((), first_function_position.as_ref().unwrap().clone())
+                                .with_message("First function defined here"),
+                        )
                 }
                 _ => unreachable!(),
             };
