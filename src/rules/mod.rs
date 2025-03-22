@@ -13,6 +13,7 @@
 // limitations under the License.
 
 pub mod api;
+pub mod rule11a;
 pub mod rule1a;
 pub mod rule1b;
 pub mod rule1c;
@@ -44,5 +45,6 @@ pub fn get_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rule3d::Rule3d {}),
         Box::new(rule3e::Rule3e {}),
         Box::new(rule3f::Rule3f {}),
+        Box::new(rule11a::Rule11a {}),
     ]
 }
