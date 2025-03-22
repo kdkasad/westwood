@@ -26,7 +26,19 @@ use crate::{helpers::LinesWithPosition, rules::api::Rule};
 /// # Rule XI:A.
 ///
 /// See module-level documentation for details.
-pub struct Rule11a {}
+pub struct Rule11a {
+    max_diagnostics: Option<usize>,
+}
+
+impl Rule11a {
+    /// Constructs a new instance of this rule.
+    ///
+    /// `max_diagnostics` specifies the maximum number of diagnostics to output. If more than this
+    /// are produced, a note is displayed on the last one and the rest are hidden.
+    pub fn new(max_diagnostics: Option<usize>) -> Self {
+        Self { max_diagnostics }
+    }
+}
 
 impl Rule for Rule11a {
     fn check(&self, _tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
@@ -74,6 +86,18 @@ impl Rule for Rule11a {
                             .with_labels_iter(labels),
                     );
                 }
+            }
+        }
+
+        // Apply the limit on the number of diagnostics produced
+        if let Some(max) = self.max_diagnostics {
+            if diagnostics.len() >= max {
+                let remaining = diagnostics.len() - max;
+                diagnostics.truncate(max);
+                diagnostics.last_mut().unwrap().notes.push(format!(
+                    "{} more lines contain tabs, but those warnings are suppressed to avoid noise.",
+                    remaining
+                ));
             }
         }
 

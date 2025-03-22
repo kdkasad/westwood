@@ -45,6 +45,6 @@ pub fn get_rules() -> Vec<Box<dyn Rule>> {
         Box::new(rule3d::Rule3d {}),
         Box::new(rule3e::Rule3e {}),
         Box::new(rule3f::Rule3f {}),
-        Box::new(rule11a::Rule11a {}),
+        Box::new(rule11a::Rule11a::new(Some(3))),
     ]
 }
