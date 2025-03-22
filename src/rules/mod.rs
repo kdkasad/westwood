@@ -13,19 +13,19 @@
 // limitations under the License.
 
 pub mod api;
+pub mod rule01a;
+pub mod rule01b;
+pub mod rule01c;
+pub mod rule01d;
+pub mod rule02a;
+pub mod rule02b;
+pub mod rule03a;
+pub mod rule03b;
+pub mod rule03c;
+pub mod rule03d;
+pub mod rule03e;
+pub mod rule03f;
 pub mod rule11a;
-pub mod rule1a;
-pub mod rule1b;
-pub mod rule1c;
-pub mod rule1d;
-pub mod rule2a;
-pub mod rule2b;
-pub mod rule3a;
-pub mod rule3b;
-pub mod rule3c;
-pub mod rule3d;
-pub mod rule3e;
-pub mod rule3f;
 
 use self::api::Rule;
 
@@ -33,18 +33,18 @@ use self::api::Rule;
 /// Returns a [Vec] of all [rules][Rule].
 pub fn get_rules() -> Vec<Box<dyn Rule>> {
     vec![
-        Box::new(rule1a::Rule1a {}),
-        Box::new(rule1b::Rule1b {}),
-        Box::new(rule1c::Rule1c {}),
-        Box::new(rule1d::Rule1d {}),
-        Box::new(rule2a::Rule2a {}),
-        Box::new(rule2b::Rule2b {}),
-        Box::new(rule3a::Rule3a {}),
-        Box::new(rule3b::Rule3b {}),
-        Box::new(rule3c::Rule3c {}),
-        Box::new(rule3d::Rule3d {}),
-        Box::new(rule3e::Rule3e {}),
-        Box::new(rule3f::Rule3f {}),
+        Box::new(rule01a::Rule01a {}),
+        Box::new(rule01b::Rule01b {}),
+        Box::new(rule01c::Rule01c {}),
+        Box::new(rule01d::Rule01d {}),
+        Box::new(rule02a::Rule02a {}),
+        Box::new(rule02b::Rule02b {}),
+        Box::new(rule03a::Rule03a {}),
+        Box::new(rule03b::Rule03b {}),
+        Box::new(rule03c::Rule03c {}),
+        Box::new(rule03d::Rule03d {}),
+        Box::new(rule03e::Rule03e {}),
+        Box::new(rule03f::Rule03f {}),
         Box::new(rule11a::Rule11a::new(Some(3))),
     ]
 }

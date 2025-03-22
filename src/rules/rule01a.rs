@@ -62,9 +62,9 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 /// # Rule I:A.
 ///
 /// See module-level documentation for details.
-pub struct Rule1a {}
+pub struct Rule01a {}
 
-impl Rule for Rule1a {
+impl Rule for Rule01a {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
@@ -143,7 +143,7 @@ mod tests {
     }
 
     #[test]
-    fn rule1a() -> ExitCode {
+    fn rule01a() -> ExitCode {
         let input = indoc! { /* c */ r#"
             int Name;
                 //!? name

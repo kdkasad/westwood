@@ -30,7 +30,7 @@
 //!
 //! # Implementation notes
 //!
-//! - Like [Rule I:A][crate::rules::rule1a], it's not possible to check that multi-word identifiers
+//! - Like [Rule I:A][crate::rules::rule01a], it's not possible to check that multi-word identifiers
 //!   are separated by underscores.
 //!
 //! - Currently, values which contain constant numeric expressions with operators will not be
@@ -63,9 +63,9 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 /// # Rule I:C.
 ///
 /// See module-level documentation for details.
-pub struct Rule1c {}
+pub struct Rule01c {}
 
-impl Rule for Rule1c {
+impl Rule for Rule01c {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();

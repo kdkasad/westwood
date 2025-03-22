@@ -92,9 +92,9 @@ const QUERY_STR_FIELD: &str = indoc! {
 /// # Rule III:B.
 ///
 /// See module-level documentation for details.
-pub struct Rule3b {}
+pub struct Rule03b {}
 
-impl Rule for Rule3b {
+impl Rule for Rule03b {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

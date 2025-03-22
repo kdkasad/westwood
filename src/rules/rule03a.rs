@@ -85,9 +85,9 @@ const QUERY_STR: &str = indoc! {
 /// # Rule III:A.
 ///
 /// See module-level documentation for details.
-pub struct Rule3a {}
+pub struct Rule03a {}
 
-impl Rule for Rule3a {
+impl Rule for Rule03a {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
@@ -170,7 +170,7 @@ mod tests {
     use super::QUERY_STR;
 
     #[test]
-    fn rule3a_captures() -> ExitCode {
+    fn rule03a_captures() -> ExitCode {
         let input = indoc! {
             /* c */
             r#"

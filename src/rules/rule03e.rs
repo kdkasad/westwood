@@ -26,9 +26,9 @@ use crate::{helpers::LinesWithPosition, rules::api::Rule};
 /// # Rule III:E.
 ///
 /// See module-level documentation for details.
-pub struct Rule3e {}
+pub struct Rule03e {}
 
-impl Rule for Rule3e {
+impl Rule for Rule03e {
     fn check(&self, _tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let code_str = std::str::from_utf8(code).expect("Code is not valid UTF-8");
@@ -56,17 +56,17 @@ mod tests {
 
     use crate::rules::api::Rule;
 
-    use super::Rule3e;
+    use super::Rule03e;
 
     /// This test is very basic and just checks the number of diagnostics produced. It doesn't
     /// check the ranges labeled or the message(s).
     #[test]
-    fn rule3e() {
+    fn rule03e() {
         let code = "int main() { \n  return 0;\t\n}\n";
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code, None).unwrap();
-        let rule = Rule3e {};
+        let rule = Rule03e {};
         let diagnostics = rule.check(&tree, code.as_bytes());
         assert_eq!(2, diagnostics.len());
     }
