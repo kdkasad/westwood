@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::io::stdout;
+use std::io::IsTerminal;
 use std::process::ExitCode;
 
 use crate::rules::api::Rule;
@@ -47,6 +49,9 @@ struct CliOptions {
 
     #[arg(value_enum, short, long, default_value_t = OutputFormat::Pretty)]
     format: OutputFormat,
+
+    #[arg(value_enum, long, default_value_t = ColorMode::Auto)]
+    color: ColorMode,
 }
 
 /// Format in which to print diagnostics
@@ -57,6 +62,33 @@ enum OutputFormat {
 
     /// Machine-parseable output
     Machine,
+}
+
+/// When to print colored output
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum ColorMode {
+    /// Never print colored output
+    Never,
+
+    /// Print colored output when stdout is a terminal
+    Auto,
+
+    /// Always print colored output
+    Always,
+}
+
+/// Lets us convert from our own [ColorMode] type into the [ColorChoice] type used by
+/// [codespan_reporting]. This is also where we check if stdout is a terminal, since
+/// [codespan_reporting] doesn't do that for us.
+impl From<ColorMode> for ColorChoice {
+    fn from(val: ColorMode) -> Self {
+        match val {
+            ColorMode::Never => ColorChoice::Never,
+            ColorMode::Auto if !stdout().is_terminal() => ColorChoice::Never,
+            ColorMode::Auto => ColorChoice::Auto,
+            ColorMode::Always => ColorChoice::Always,
+        }
+    }
 }
 
 fn main() -> ExitCode {
@@ -96,7 +128,7 @@ fn main() -> ExitCode {
     }
 
     // Create diagnostic writer & file source
-    let writer = StandardStream::stdout(ColorChoice::Auto);
+    let writer = StandardStream::stdout(cli.color.into());
     // TODO: Detect color (and maybe box drawing) support
     let config = term::Config {
         tab_width: 8,
