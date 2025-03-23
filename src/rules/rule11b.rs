@@ -92,6 +92,60 @@ impl Rule for Rule11b {
 
 #[cfg(test)]
 mod tests {
-    // TODO: Test the actual lints produced, because not all of the logic for this rule is
-    // encapsulated in the query.
+    use std::num::NonZeroUsize;
+
+    use pretty_assertions::{assert_eq, assert_str_eq};
+    use tree_sitter::{Parser, Tree};
+
+    use crate::rules::api::Rule;
+
+    /// Returns a [Tree] for the given C code.
+    fn parse(code: &str) -> Tree {
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+        parser.parse(code.as_bytes(), None).unwrap()
+    }
+
+    /// Tests the diagnostics produced when a file has CRLF endings.
+    /// Specifically checks for:
+    /// - number of diagnostics produced
+    /// - number of labels produced
+    /// - position of labels
+    #[test]
+    fn has_crlf() {
+        let code = "int main() {\r\n  return 0;\r\n}\r\n";
+        let rule = super::Rule11b::new(None);
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert_eq!(3, diagnostics.len());
+        let cr_positions: Vec<usize> = code
+            .char_indices()
+            .filter(|(_pos, c)| *c == '\r')
+            .map(|(pos, _c)| pos)
+            .collect();
+        for (diag, cr_pos) in std::iter::zip(diagnostics, cr_positions) {
+            assert_eq!(1, diag.labels.len());
+            assert_eq!(1, diag.labels[0].range.end - diag.labels[0].range.start);
+            assert_eq!(cr_pos, diag.labels[0].range.start);
+        }
+    }
+
+    #[test]
+    fn no_crlf() {
+        let code = "int main() {\n  return 0;\n}\n";
+        let rule = super::Rule11b::new(None);
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert!(diagnostics.is_empty());
+    }
+
+    /// Tests that the limit on the maximum number of diagnostics returned works.
+    #[test]
+    fn limit() {
+        let code = "int main() {\r\n  return 0;\r\n}\r\n";
+        let rule = super::Rule11b::new(Some(NonZeroUsize::new(1).unwrap()));
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert_eq!(1, diagnostics.len());
+        assert_eq!(2, diagnostics[0].notes.len());
+        // First note is Vim tip; second is remaining warnings.
+        assert_str_eq!("2", diagnostics[0].notes[1].split_whitespace().next().unwrap());
+    }
 }
