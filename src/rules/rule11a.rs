@@ -109,4 +109,47 @@ impl Rule for Rule11a {
 mod tests {
     // TODO: Test the actual lints produced, because not all of the logic for this rule is
     // encapsulated in the query.
+
+    use pretty_assertions::assert_eq;
+    use tree_sitter::{Parser, Tree};
+
+    use crate::rules::api::Rule;
+
+    /// Returns a [Tree] for the given C code.
+    fn parse(code: &str) -> Tree {
+        let mut parser = Parser::new();
+        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
+        parser.parse(code.as_bytes(), None).unwrap()
+    }
+
+    /// Tests when lines contain only tabs for indentation.
+    #[test]
+    fn all_tabs() {
+        let code = "#include <stdio.h>\nint main() {\n\t\tprintf(\"Hello, world!\\n\");\n\t\treturn 0;\n}\n";
+        let rule = super::Rule11a::new(None);
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert_eq!(2, diagnostics.len());
+        assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
+    }
+
+    /// Tests when lines contain a mix of tabs and spaces.
+    #[test]
+    fn mix_tabs_spaces() {
+        let code = "#include <stdio.h>\nint main() {\n  \tprintf(\"Hello, world!\\n\");\n  \treturn 0;\n}\n";
+        let rule = super::Rule11a::new(None);
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert_eq!(2, diagnostics.len());
+        assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
+        assert!(diagnostics.iter().all(|diag| diag.notes.len() == 1));
+    }
+
+    /// Tests when lines don't use tabs (checks for false positives).
+    #[test]
+    fn no_tabs() {
+        let code =
+            "#include <stdio.h>\nint main() {\n  printf(\"Hello, world!\\n\");\n  return 0;\n}\n";
+        let rule = super::Rule11a::new(None);
+        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        assert!(diagnostics.is_empty());
+    }
 }
