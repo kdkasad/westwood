@@ -28,7 +28,7 @@
 //!
 //! # Implementation notes
 //!
-//! This is almost impossible to check programmatically, so [`Rule1b`] does nothing. It (and this
+//! This is almost impossible to check programmatically, so [`Rule01b`] does nothing. It (and this
 //! module) are included here for the sake of completeness.
 //!
 //! # To do
@@ -43,9 +43,9 @@ use crate::rules::api::Rule;
 /// # Rule I:B.
 ///
 /// See module-level documentation for details.
-pub struct Rule1b {}
+pub struct Rule01b {}
 
-impl Rule for Rule1b {
+impl Rule for Rule01b {
     fn check(&self, _tree: &Tree, _code: &[u8]) -> Vec<Diagnostic<()>> {
         Vec::with_capacity(0)
     }

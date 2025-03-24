@@ -44,9 +44,9 @@ const QUERY_STR: &str = indoc! {
 /// # Rule III:F.
 ///
 /// See module-level documentation for details.
-pub struct Rule3f {}
+pub struct Rule03f {}
 
-impl Rule for Rule3f {
+impl Rule for Rule03f {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);
@@ -83,7 +83,7 @@ mod tests {
     use super::QUERY_STR;
 
     #[test]
-    fn rule3f_captures() -> ExitCode {
+    fn rule03f_captures() -> ExitCode {
         let input = indoc! {
             /* c */ r#"
             #define MAX(a, b) (((a) < (b)) ? (b) : (a))

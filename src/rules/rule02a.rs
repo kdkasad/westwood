@@ -47,9 +47,9 @@ use crate::{helpers::LinesWithPosition, rules::api::Rule};
 /// # Rule II:A.
 ///
 /// See module-level documentation for details.
-pub struct Rule2a {}
+pub struct Rule02a {}
 
-impl Rule for Rule2a {
+impl Rule for Rule02a {
     fn check(&self, _tree: &Tree, code_bytes: &[u8]) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

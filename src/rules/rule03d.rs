@@ -70,9 +70,9 @@ const QUERY_STR: &str = indoc! {
 /// # Rule III:D.
 ///
 /// See module-level documentation for details.
-pub struct Rule3d {}
+pub struct Rule03d {}
 
-impl Rule for Rule3d {
+impl Rule for Rule03d {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         // List of function definition bodies
         let mut function_bodies: Vec<Node> = Vec::new();
@@ -312,7 +312,7 @@ mod tests {
 
     use crate::rules::api::Rule;
 
-    use super::Rule3d;
+    use super::Rule03d;
 
     /// Ensures that `#define` statements are being grouped together and not treated separately.
     #[test]
@@ -328,7 +328,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let rule = Rule3d {};
+        let rule = Rule03d {};
         let diagnostics = rule.check(&tree, code.as_bytes());
         // Expect 1 diagnostic for the whole group.
         assert_eq!(1, diagnostics.len());
@@ -342,7 +342,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let rule = Rule3d {};
+        let rule = Rule03d {};
         let diagnostics = rule.check(&tree, code.as_bytes());
         assert_eq!(1, diagnostics.len());
         assert_eq!(code.lines().last().unwrap(), &code[diagnostics[0].labels[0].range.clone()]);
@@ -356,7 +356,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let rule = Rule3d {};
+        let rule = Rule03d {};
         let diagnostics = rule.check(&tree, code.as_bytes());
         assert!(diagnostics.is_empty());
     }
@@ -369,7 +369,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let rule = Rule3d {};
+        let rule = Rule03d {};
         let diagnostics = rule.check(&tree, code.as_bytes());
         // Sanity checks
         assert_eq!(1, diagnostics.len());

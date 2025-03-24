@@ -50,9 +50,9 @@ const QUERY_STR: &str = indoc! {
 /// # Rule II:B.
 ///
 /// See module-level documentation for details.
-pub struct Rule2b {}
+pub struct Rule02b {}
 
-impl Rule for Rule2b {
+impl Rule for Rule02b {
     fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
@@ -86,19 +86,16 @@ impl Rule for Rule2b {
 
 #[cfg(test)]
 mod tests {
-    use crate::rules::{
-        api::Rule,
-        rule2b::{MAX_PAGES_PER_FUNCTION, PAGE_SIZE},
-    };
+    use crate::rules::api::Rule;
 
     use codespan_reporting::diagnostic::{Diagnostic, Label};
     use pretty_assertions::assert_eq;
     use tree_sitter::Parser;
 
-    use super::Rule2b;
+    use super::{Rule02b, MAX_PAGES_PER_FUNCTION, PAGE_SIZE};
 
     #[test]
-    fn rule2b() {
+    fn rule02b() {
         // Generate long function
         let mut code = String::new();
         code.push_str("int main() {\n");
@@ -111,9 +108,9 @@ mod tests {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let rule2b = Rule2b {};
+        let rule02b = Rule02b {};
         assert_eq!(
-            rule2b.check(&tree, code.as_bytes()),
+            rule02b.check(&tree, code.as_bytes()),
             vec![Diagnostic::warning()
                 .with_code("II:B")
                 .with_message(format!(
