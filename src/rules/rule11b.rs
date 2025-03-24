@@ -68,10 +68,7 @@ impl Rule for Rule11b {
                     .with_code("XI:B")
                     .with_message("Line contains DOS-style ending")
                     .with_label(Label::primary((), cr_pos..(cr_pos + 1)))
-                    // TODO: Don't hard-code escape sequences
-                    .with_note(
-                        "See \x1b[4m:h 'fileformat'\x1b[m in Vim for info on how to fix this",
-                    ),
+                    .with_note("Use the `fileformat' option in Vim to fix this"),
             );
 
             // Apply the limit on the number of diagnostics produced
