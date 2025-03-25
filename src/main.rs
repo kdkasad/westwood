@@ -44,7 +44,7 @@ const LONG_ABOUT: &str = concat!("Westwood: ", crate_description!());
 #[derive(CliArgParser, Debug)]
 #[command(version, about = None, long_about = LONG_ABOUT)]
 struct CliOptions {
-    /// File to lint, or `-` for standard input
+    /// File to lint, or `-' for standard input
     file: FileOrStdin,
 
     #[arg(value_enum, short, long, default_value_t = OutputFormat::Pretty)]
