@@ -77,9 +77,9 @@ enum ColorMode {
     Always,
 }
 
-/// Lets us convert from our own [ColorMode] type into the [ColorChoice] type used by
-/// [codespan_reporting]. This is also where we check if stdout is a terminal, since
-/// [codespan_reporting] doesn't do that for us.
+/// Lets us convert from our own [`ColorMode`] type into the [`ColorChoice`] type used by
+/// [`codespan_reporting`]. This is also where we check if stdout is a terminal, since
+/// [`codespan_reporting`] doesn't do that for us.
 impl From<ColorMode> for ColorChoice {
     fn from(val: ColorMode) -> Self {
         match val {
