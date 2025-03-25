@@ -37,7 +37,7 @@ pub struct QueryHelper<'src> {
 }
 
 impl<'src> QueryHelper<'src> {
-    /// Constructs a new [QueryHelper].
+    /// Constructs a new [`QueryHelper`].
     /// This function does not execute the query.
     ///
     /// # Arguments
@@ -85,7 +85,7 @@ impl<'src> QueryHelper<'src> {
     /// # Arguments
     ///
     /// - `handler`: Callback to execute for each capture.
-    ///   The arguments to the callback are the name of the capture and the [QueryCapture].
+    ///   The arguments to the callback are the name of the capture and the [`QueryCapture`].
     pub fn for_each_capture<'a, F>(&'a self, mut handler: F)
     where
         F: FnMut(&'a str, QueryCapture<'a>),
@@ -109,7 +109,7 @@ impl<'src> QueryHelper<'src> {
     /// # Arguments
     ///
     /// - `handler`: Callback to execute for each match.
-    ///   The argument to the callback is the [QueryMatch].
+    ///   The argument to the callback is the [`QueryMatch`].
     pub fn for_each_match<F>(&self, mut handler: F)
     where
         F: FnMut(&QueryMatch),
@@ -226,7 +226,7 @@ pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code 
 }
 
 /// Gets the number of columns by which this line is indented. Tab characters (U+0009 or `'\t'`)
-/// are counted as 8 columns. All other whitespace is sized using [unicode_width].
+/// are counted as 8 columns. All other whitespace is sized using [`unicode_width`].
 pub fn indent_width(line: &str) -> usize {
     line.chars()
         .take_while(|c| c.is_whitespace())
@@ -286,7 +286,7 @@ impl<'a> Iterator for LinesWithPosition<'a> {
 /// ```text
 /// 1..2, 2..3, 3..5, 6..7, 8..9, 9..10
 /// ```
-/// would be transformed by the [RangeCollapser] into:
+/// would be transformed by the [`RangeCollapser`] into:
 /// ```text
 /// 1..5, 6..7, 8..10
 /// ```

@@ -74,7 +74,7 @@ impl Rule for Rule02a {
 
 /// Returns the width of a line in columns.
 ///
-/// Returns the width according to the [unicode_width] module, but with tab characters (U+0009 or
+/// Returns the width according to the [`unicode_width`] module, but with tab characters (U+0009 or
 /// `'\t'`) treated as 8 columns wide.
 fn line_width(line: &str) -> usize {
     line.width() + line.chars().filter(|c| *c == '\t').count() * 7
