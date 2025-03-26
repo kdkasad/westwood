@@ -22,6 +22,9 @@ use super::QueryHelper;
 
 ///
 /// Tests a given query's captures on a certain input.
+///
+/// # Panics
+///
 /// Panics if the test fails.
 ///
 /// # Input format
@@ -128,14 +131,15 @@ pub fn test_captures(query: &str, input: &str) -> ExitCode {
             }
         }
     });
-    for (&(label, row, col), &expected_count) in test_specs.iter() {
+    for (&(label, row, col), &expected_count) in &test_specs {
         if expected_count > 0 {
-            eprintln!("Expected @{} at row {} column {}", label, row, col);
+            eprintln!("Expected @{label} at row {row} column {col}");
             failed = true;
         }
     }
-    match failed {
-        true => ExitCode::FAILURE,
-        false => ExitCode::SUCCESS,
+    if failed {
+        ExitCode::FAILURE
+    } else {
+        ExitCode::SUCCESS
     }
 }

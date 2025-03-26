@@ -13,6 +13,8 @@
 // limitations under the License.
 
 #![warn(clippy::pedantic)]
+#![allow(clippy::missing_panics_doc)]
+#![allow(clippy::too_many_lines)]
 
 use std::io::stdout;
 use std::io::IsTerminal;
@@ -46,7 +48,7 @@ const LONG_ABOUT: &str = concat!("Westwood: ", crate_description!());
 #[derive(CliArgParser, Debug)]
 #[command(version, about = None, long_about = LONG_ABOUT)]
 struct CliOptions {
-    /// File to lint, or `-' for standard input
+    #[arg(help = "File to lint, or `-' for standard input")]
     file: FileOrStdin,
 
     #[arg(value_enum, short, long, default_value_t = OutputFormat::Pretty)]
@@ -97,9 +99,10 @@ fn main() -> ExitCode {
     let cli = CliOptions::parse();
 
     // Save filename
-    let filename = match cli.file.is_file() {
-        true => cli.file.filename(),
-        false => "(stdin)",
+    let filename = if cli.file.is_file() {
+        cli.file.filename()
+    } else {
+        "(stdin)"
     }
     .to_owned();
 
@@ -107,7 +110,7 @@ fn main() -> ExitCode {
     let code: String = match cli.file.contents() {
         Ok(contents) => contents,
         Err(err) => {
-            eprintln!("Error: Cannot read {}: {}", filename, err);
+            eprintln!("Error: Cannot read {filename}: {err}");
             return ExitCode::FAILURE;
         }
     };
@@ -146,7 +149,7 @@ fn main() -> ExitCode {
             match cli.format {
                 OutputFormat::Pretty => {
                     term::emit(&mut writer.lock(), &config, &files, &diagnostic)
-                        .expect("Failed to write diagnostic")
+                        .expect("Failed to write diagnostic");
                 }
                 OutputFormat::Machine => print_machine_parseable(&files, &diagnostic),
             }
@@ -200,9 +203,9 @@ where
         Severity::Note => "NOTE",
         Severity::Help => "HELP",
     };
-    print!("{}: ", severity);
+    print!("{severity}: ");
     if let Some(code) = diagnostic.code.as_ref() {
-        print!("[{}] ", code);
+        print!("[{code}] ");
     }
     println!("{}", diagnostic.message);
     println!(

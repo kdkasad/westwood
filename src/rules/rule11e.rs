@@ -27,9 +27,9 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 /// Tree-sitter query for Rule XI:E.
 const QUERY_STR: &str = indoc! {
     /* query */
-    r#"
+    r"
     (goto_statement) @goto
-    "#
+    "
 };
 
 /// # Rule XI:E.
@@ -67,14 +67,14 @@ mod tests {
     #[test]
     fn rule11e_captures() -> ExitCode {
         let input = indoc! {
-            /* c */ r#"
+            /* c */ r"
             int main() {
                 goto label;
                 //!? goto
                 label:
                 return 0;
             }
-            "#
+            "
         };
         test_captures(QUERY_STR, input)
     }

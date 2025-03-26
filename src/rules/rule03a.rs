@@ -173,7 +173,7 @@ mod tests {
     fn rule03a_captures() -> ExitCode {
         let input = indoc! {
             /* c */
-            r#"
+            r"
             int main() {
                 switch (x) {
                 //!? keyword
@@ -302,7 +302,7 @@ mod tests {
                  //!? keyword
                       //!? lparen
             }
-            "#
+            "
         };
         test_captures(QUERY_STR, input)
     }

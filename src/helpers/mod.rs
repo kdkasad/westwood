@@ -45,6 +45,10 @@ impl<'src> QueryHelper<'src> {
     /// - `query_src`: Tree-sitter query to execute.
     /// - `tree`: Tree to execute query on.
     /// - `code`: Source text/code that `tree` represents.
+    ///
+    /// # Panics
+    ///
+    /// Panics if Tree-sitter fails to parse the query.
     #[must_use]
     pub fn new(query_src: &str, tree: &'src Tree, code: &'src [u8]) -> Self {
         let query =
@@ -53,22 +57,30 @@ impl<'src> QueryHelper<'src> {
     }
 
     /// Returns a reference to this helper's query.
+    #[must_use]
     pub fn query(&self) -> &Query {
         &self.query
     }
 
-    /// Returns the index for the capture with the given name, or panics if there is no capture
-    /// with such a name.
+    /// Returns the index for the capture with the given name.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no capture with such a name.
+    #[must_use]
     pub fn expect_index_for_capture(&self, name: &str) -> u32 {
         self.query
             .capture_index_for_name(name)
-            .unwrap_or_else(|| panic!("Query has no capture named `{}'", name))
+            .unwrap_or_else(|| panic!("Query has no capture named `{name}'"))
     }
 
     /// Returns the node captured by the capture with the given index. To get an index from
     /// a capture name, use [`expect_index_for_capture()`][Self::expect_index_for_capture].
     ///
+    /// # Panics
+    ///
     /// Panics if the given capture does not have exactly one node.
+    #[must_use]
     pub fn expect_node_for_capture_index(
         &self,
         qmatch: &QueryMatch<'_, 'src>,
@@ -167,7 +179,7 @@ impl<'src> QueryHelper<'src> {
                     }
                     found
                 } else {
-                    panic!("Invalid arguments to #{}. Expected a capture and a string.", orig_op);
+                    panic!("Invalid arguments to #{orig_op}. Expected a capture and a string.");
                 }
             }
 
@@ -186,12 +198,12 @@ impl<'src> QueryHelper<'src> {
                     );
                     target.parent().is_some_and(|parent| parent.kind() == kind.as_ref())
                 } else {
-                    panic!("Invalid arguments to #{}. Expected a capture and a string.", orig_op);
+                    panic!("Invalid arguments to #{orig_op}. Expected a capture and a string.");
                 }
             }
 
             _ => {
-                eprintln!("WARNING: Ignoring unknown predicate `{}'", orig_op);
+                eprintln!("WARNING: Ignoring unknown predicate `{orig_op}'");
                 false
             }
         };
@@ -209,6 +221,7 @@ impl<'src> QueryHelper<'src> {
 ///   the node named by the `declarator` field;
 /// - the node's text is not valid UTF-8
 ///
+#[must_use]
 pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code str {
     assert_eq!(
         "function_definition",
@@ -227,6 +240,7 @@ pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code 
 
 /// Gets the number of columns by which this line is indented. Tab characters (U+0009 or `'\t'`)
 /// are counted as 8 columns. All other whitespace is sized using [`unicode_width`].
+#[must_use]
 pub fn indent_width(line: &str) -> usize {
     line.chars()
         .take_while(|c| c.is_whitespace())
@@ -349,7 +363,7 @@ mod test {
     #[test]
     /// Test the `#has-ancestor?` custom predicate.
     fn test_has_ancestor() -> ExitCode {
-        let input = indoc! { /* c */ r#"
+        let input = indoc! { /* c */ r"
             int a;
                 //!? outfunc
             int b = 0;
@@ -367,22 +381,22 @@ mod test {
                            //!? infunc inif
                 }
             }
-        "# };
-        let query = indoc! { /* query */ r#"
+        " };
+        let query = indoc! { /* query */ r"
             ((identifier) @infunc
                 (#has-ancestor? @infunc function_definition))
             ((identifier) @outfunc
                 (#not-has-ancestor? @outfunc function_definition))
             ((identifier) @inif
                 (#has-ancestor? @inif if_statement))
-        "# };
+        " };
         test_captures(query, input)
     }
 
     #[test]
     /// Test the `#has-parent?` custom predicate.
     fn test_has_parent() -> ExitCode {
-        let input = indoc! { /* c */ r#"
+        let input = indoc! { /* c */ r"
             int a = 0;
             //!? toplevel
                     //!? number
@@ -392,21 +406,21 @@ mod test {
                 //!? funcdeclname
                 return 0;
             }
-        "# };
+        " };
 
-        let query = indoc! { /* query */ r#"
+        let query = indoc! { /* query */ r"
             ((_) @toplevel
                 (#has-parent? @toplevel translation_unit))
             ((_ declarator: (identifier) @funcdeclname)
                 (#has-parent? @funcdeclname function_declarator))
             ((number_literal) @number
                 (#not-has-parent? @number return_statement))
-        "# };
+        " };
         test_captures(query, input)
     }
 
     #[test]
-    /// Test [function_definition_name()][super::function_definition_name()].
+    /// Test [`function_definition_name()`][super::function_definition_name()].
     fn function_definition_name() {
         // List of tuples of the form (code, function name)
         let tests = [
@@ -433,7 +447,7 @@ mod test {
     }
 
     #[test]
-    /// Test [indent_width()][super::indent_width()].
+    /// Test [`indent_width()`][super::indent_width()].
     fn indent_width() {
         let tests = [
             ("a", 0),
@@ -452,13 +466,13 @@ mod test {
     #[test]
     fn range_collapser() {
         let code = indoc! {
-            /* c */ r#"
+            /* c */ r"
             #define A 1
             #define B 2
 
             #define C 1
             #define D 2
-            "#
+            "
         };
         let mut ranges: Vec<Range> = Vec::with_capacity(4);
         let mut parser = Parser::new();
@@ -480,7 +494,7 @@ mod test {
         assert_eq!(ranges[3].end_point, group2.end_point);
     }
 
-    /// Tests [LinesWithPosition] on an input containing:
+    /// Tests [`LinesWithPosition`] on an input containing:
     /// - empty lines
     /// - non-empty lines
     /// - `\n` (LF) line endings

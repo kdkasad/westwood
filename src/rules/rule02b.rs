@@ -42,9 +42,9 @@ const MAX_PAGES_PER_FUNCTION: usize = 2;
 /// Tree-sitter query for Rule I:D.
 const QUERY_STR: &str = indoc! {
     /* query */
-    r#"
+    r"
     (function_definition) @function
-    "#
+    "
 };
 
 /// # Rule II:B.

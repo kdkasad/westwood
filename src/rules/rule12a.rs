@@ -151,17 +151,17 @@ mod tests {
     fn is_function_declaration() {
         // Here, every other declaration starting with the first must be a function declaration
         let function_declarations = indoc! {
-            /* c */ r#"
+            /* c */ r"
             int main(void);
             char *get_string(void);
             void nested_declaration(void (*inner)(void));
-            "#
+            "
         };
         let non_function_declarations = indoc! {
-            /* c */ r#"
+            /* c */ r"
             int not_a_function;
             char *string;
-            "#
+            "
         };
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
@@ -193,7 +193,7 @@ mod tests {
     #[test]
     fn captures() -> ExitCode {
         let input = indoc! {
-            /* c */ r#"
+            /* c */ r"
             int var2, *var2, var3[10];
             //!? declaration first-child
 
@@ -226,7 +226,7 @@ mod tests {
                 void another(void (*inner)(void));
                 //!? declaration
             }
-            "#
+            "
         };
         test_captures(QUERY_STR, input)
     }

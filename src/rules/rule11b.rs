@@ -37,6 +37,7 @@ impl Rule11b {
     ///
     /// `max_diagnostics` specifies the maximum number of diagnostics to output. If more than this
     /// are produced, a note is displayed on the last one and the rest are hidden.
+    #[must_use]
     pub fn new(max_diagnostics: Option<NonZeroUsize>) -> Self {
         Self { max_diagnostics }
     }
@@ -67,7 +68,10 @@ impl Rule for Rule11b {
                 Diagnostic::warning()
                     .with_code("XI:B")
                     .with_message("Line contains DOS-style ending")
-                    .with_label(Label::primary((), cr_pos..(cr_pos + 1)))
+                    .with_label(
+                        #[allow(clippy::range_plus_one)]
+                        Label::primary((), cr_pos..(cr_pos + 1)),
+                    )
                     .with_note("Use the `fileformat' option in Vim to fix this"),
             );
 
