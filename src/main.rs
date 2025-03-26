@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#![warn(clippy::pedantic)]
+
 use std::io::stdout;
 use std::io::IsTerminal;
 use std::process::ExitCode;
