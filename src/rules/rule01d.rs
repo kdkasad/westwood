@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn rule01d() -> ExitCode {
-        let input = indoc! { /* c */ r#"
+        let input = indoc! { /* c */ r"
             int an_int;
             //!? declaration.top_level
                 //!? global.no_g_prefix
@@ -172,7 +172,7 @@ mod tests {
                 int x;
             } another_global;
               //!? global.no_g_prefix
-        "#};
+        "};
         test_captures(QUERY_STR, input)
     }
 }

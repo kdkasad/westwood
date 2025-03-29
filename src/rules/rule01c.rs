@@ -85,7 +85,7 @@ impl Rule for Rule01c {
                 "constant.value.unwrapped_number" => (
                     "Numeric constant value must be wrapped in parentheses",
                     "Value defined here",
-                    Some(format!("({})", node_text)),
+                    Some(format!("({node_text})")),
                 ),
                 _ => unreachable!(),
             };
@@ -96,7 +96,7 @@ impl Rule for Rule01c {
             if let Some(fix) = fix {
                 diagnostic.labels.push(
                     Label::secondary((), capture.node.byte_range())
-                        .with_message(format!("Perhaps you meant `{}'", fix)),
+                        .with_message(format!("Perhaps you meant `{fix}'")),
                 );
             }
             diagnostics.push(diagnostic);

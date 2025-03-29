@@ -35,6 +35,7 @@ impl Rule11a {
     ///
     /// `max_diagnostics` specifies the maximum number of diagnostics to output. If more than this
     /// are produced, a note is displayed on the last one and the rest are hidden.
+    #[must_use]
     pub fn new(max_diagnostics: Option<usize>) -> Self {
         Self { max_diagnostics }
     }
@@ -73,6 +74,7 @@ impl Rule for Rule11a {
                     .filter(|(_pos, c)| *c == '\t')
                     .map(|(pos, _c)| pos)
                     .map(|pos| {
+                        #[allow(clippy::range_plus_one)]
                         Label::primary((), (start_pos + pos)..(start_pos + pos + 1))
                             .with_message("Tab character found here")
                     })
@@ -95,8 +97,7 @@ impl Rule for Rule11a {
                 let remaining = diagnostics.len() - max;
                 diagnostics.truncate(max);
                 diagnostics.last_mut().unwrap().notes.push(format!(
-                    "{} more lines contain tabs, but those warnings are suppressed to avoid noise.",
-                    remaining
+                    "{remaining} more lines contain tabs, but those warnings are suppressed to avoid noise."
                 ));
             }
         }

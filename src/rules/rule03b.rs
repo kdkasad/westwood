@@ -39,12 +39,12 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 /// Tree-sitter query to capture binary expressions/operators.
 const QUERY_STR_BINARY: &str = indoc! {
     /* query */
-    r#"
+    r"
     (binary_expression
         left: _ @prev
         operator: _ @binary-operator
         right: _ @next)
-    "#
+    "
 };
 
 /// Tree-sitter query to capture unary expressions/operators.
@@ -81,12 +81,12 @@ const QUERY_STR_ARRAY: &str = indoc! {
 /// Tree-sitter query to capture field expressions/operators.
 const QUERY_STR_FIELD: &str = indoc! {
     /* query */
-    r#"
+    r"
     (field_expression
         argument: _ @prev
         operator: _ @field-operator
         field: _ @next)
-    "#
+    "
 };
 
 /// # Rule III:B.
@@ -265,7 +265,7 @@ mod tests {
     fn binary_op_captures() -> ExitCode {
         let input = indoc! {
             /* c */
-            r#"
+            r"
             int main() {
                 1 + 2;
                 //!? prev
@@ -297,7 +297,7 @@ mod tests {
                     //!? next
                 }
             }
-            "#
+            "
         }
         .replace("binop", "binary-operator");
         test_captures(QUERY_STR_BINARY, &input)
@@ -333,7 +333,7 @@ mod tests {
     #[test]
     fn field_op_captures() -> ExitCode {
         let input = indoc! {
-            /* c */ r#"
+            /* c */ r"
             int main(int argc) {
                 a->b;
                 //!? prev
@@ -354,7 +354,7 @@ mod tests {
                       //!? field-operator
                        //!? next
             }
-            "#
+            "
         };
         test_captures(QUERY_STR_FIELD, input)
     }

@@ -108,7 +108,7 @@ impl Rule for Rule03d {
         // Check that global #define statements come before function definitions
         let global_define_groups: Vec<TSRange> =
             RangeCollapser::from(global_definitions.into_iter().map(|def| def.range())).collect();
-        for group in global_define_groups.iter() {
+        for group in &global_define_groups {
             if first_func.is_some_and(|func| func.end_byte() < group.start_byte) {
                 let print_range =
                     range_without_trailing_eol(group.start_byte..group.end_byte, code);
@@ -209,12 +209,11 @@ impl Rule for Rule03d {
             let has_blank_before =
                 define.start_point.row == 0 || lines[define.start_point.row - 1].0.is_empty();
             // Byte range of the previous line so we can label it
-            let prev_line_range: Option<Range<usize>> = match has_blank_before {
-                true => None,
-                false => {
-                    let (prev_line, prev_line_start) = lines[define.start_point.row - 1];
-                    Some(prev_line_start..(prev_line_start + prev_line.len()))
-                }
+            let prev_line_range: Option<Range<usize>> = if has_blank_before {
+                None
+            } else {
+                let (prev_line, prev_line_start) = lines[define.start_point.row - 1];
+                Some(prev_line_start..(prev_line_start + prev_line.len()))
             };
 
             // If the #define does not end at the start of a line, take the next line
@@ -225,12 +224,11 @@ impl Rule for Rule03d {
                 };
             let has_blank_after = lines.get(end_line).is_none_or(|(line, _pos)| line.is_empty());
             // Byte range of the following line so we can label it
-            let next_line_range: Option<Range<usize>> = match has_blank_after {
-                true => None,
-                false => {
-                    let (next_line, next_line_start) = lines[end_line];
-                    Some(next_line_start..(next_line_start + next_line.len()))
-                }
+            let next_line_range: Option<Range<usize>> = if has_blank_after {
+                None
+            } else {
+                let (next_line, next_line_start) = lines[end_line];
+                Some(next_line_start..(next_line_start + next_line.len()))
             };
 
             // Produce diagnostic
@@ -318,12 +316,12 @@ mod tests {
     #[test]
     fn grouping() {
         let code = indoc! {
-            /* c */ r#"
+            /* c */ r"
             // comment
             #define A
             #define B
             // comment
-            "#
+            "
         };
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();

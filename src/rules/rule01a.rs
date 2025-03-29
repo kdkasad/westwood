@@ -78,7 +78,7 @@ impl Rule for Rule01a {
                 _ => "Variable",
             };
             let diagnostic = Diagnostic::warning()
-                .with_message(format!("{} names must be in lower snake case.", nametype))
+                .with_message(format!("{nametype} names must be in lower snake case."))
                 .with_code("I:A")
                 .with_label(
                     Label::primary((), capture.node.byte_range())
@@ -144,7 +144,7 @@ mod tests {
 
     #[test]
     fn rule01a() -> ExitCode {
-        let input = indoc! { /* c */ r#"
+        let input = indoc! { /* c */ r"
             int Name;
                 //!? name
             int *Name;
@@ -171,7 +171,7 @@ mod tests {
                   //!? name
             } MyType;
               //!? name
-        "#};
+        "};
         test_captures(super::QUERY_STR, input)
     }
 }
