@@ -12,10 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#![warn(clippy::pedantic)]
-#![allow(clippy::missing_panics_doc)]
-#![allow(clippy::too_many_lines)]
-
 use std::io::stdout;
 use std::io::IsTerminal;
 use std::process::ExitCode;
@@ -37,10 +33,10 @@ use codespan_reporting::{
         termcolor::{ColorChoice, StandardStream},
     },
 };
+use crashlog::cargo_metadata;
 use tree_sitter::{Parser, Tree};
 
 pub mod helpers;
-mod panic;
 pub mod rules;
 
 /// Description printed with `--help` flag
@@ -99,7 +95,16 @@ impl From<ColorMode> for ColorChoice {
 fn main() -> ExitCode {
     // Set custom panic handler for release mode
     if !cfg!(debug_assertions) && std::env::var_os("RUST_BACKTRACE").is_none() {
-        crate::panic::register_human_panic_handler();
+        let mut metadata = cargo_metadata!();
+        let mut chars = metadata.package.chars();
+        metadata.package = chars
+            .next()
+            .expect("Expected non-empty package name")
+            .to_uppercase()
+            .chain(chars)
+            .collect::<String>()
+            .into();
+        crashlog::setup(metadata);
     }
 
     let cli = CliOptions::parse();

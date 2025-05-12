@@ -1,0 +1,17 @@
+[package]
+name = "crashlog"
+version = "0.0.0"
+description = "Panic handling for humans"
+
+# Inherit these keys from workspace
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+exclude.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+getrandom = "0.3.3"
+indoc = "2.0.6"
+os_info = "3.11.0"
