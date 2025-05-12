@@ -40,6 +40,7 @@ use codespan_reporting::{
 use tree_sitter::{Parser, Tree};
 
 pub mod helpers;
+mod panic;
 pub mod rules;
 
 /// Description printed with `--help` flag
@@ -96,6 +97,11 @@ impl From<ColorMode> for ColorChoice {
 }
 
 fn main() -> ExitCode {
+    // Set custom panic handler for release mode
+    if !cfg!(debug_assertions) && std::env::var_os("RUST_BACKTRACE").is_none() {
+        crate::panic::register_human_panic_handler();
+    }
+
     let cli = CliOptions::parse();
 
     // Save filename
