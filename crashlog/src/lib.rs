@@ -81,12 +81,10 @@
 //!
 //! # Usage
 //!
-//! Simply call [`crashlog::setup()`][crate::setup] with a [`ProgramMetadata`] structure describing
-//! your program. The second argument specifies whether to replace to the current panic handler (if
-//! `true`) or append to it (if `false`); see [`setup()`] for more details.
+//! Simply call [`crashlog::setup!()`][crate::setup!] to register the panic handler.
 //!
 //! ```ignore
-//! crashlog::setup(ProgramMetadata { /* ... */ }, false);
+//! crashlog::setup!(ProgramMetadata { /* ... */ }, false);
 //! ```
 //!
 //! You can use the [`cargo_metadata!()`] helper macro to automatically extract the metadata from
@@ -96,7 +94,7 @@
 //! // This example doesn't compile because tests/examples don't have the proper metadata
 //! // set by Cargo.
 //! use crashlog::cargo_metadata;
-//! crashlog::setup(cargo_metadata!().capitalized(), false);
+//! crashlog::setup!(cargo_metadata!().capitalized(), false);
 //! ```
 //!
 //! You can also provide a default placeholder in case some metadata entries are missing, instead
@@ -104,14 +102,25 @@
 //!
 //! ```
 //! # use crashlog::cargo_metadata;
-//! crashlog::setup(cargo_metadata!(default = "(unknown)"), true);
+//! crashlog::setup!(cargo_metadata!(default = "(unknown)"), true);
+//! ```
+//!
+//! Finally, you can provide your own panic message to be printed to the user. See [`setup!()`] for
+//! information on how to do so.
+//!
+//! ```
+//! # use crashlog::cargo_metadata;
+//! crashlog::setup!(cargo_metadata!(default = "(unknown)"), false, "\
+//! {package} crashed. Please go to {repository}/issues/new
+//! and paste the contents of {log_path}.
+//! ");
 //! ```
 
 use std::{
     backtrace::Backtrace,
     borrow::Cow,
     fs::File,
-    io::{BufWriter, IsTerminal, Write},
+    io::{BufWriter, Write},
     panic::PanicHookInfo,
     path::PathBuf,
 };
@@ -122,7 +131,10 @@ use chrono::{DateTime, Utc};
 /// The file is placed in a temporary directory as given by [`std::env::temp_dir()`].
 /// If creating or writing to the file fails, `None` is returned, otherwise `Some` is returned with
 /// the path of the log file.
-fn try_generate_report(
+///
+/// This is an internal function, and should not be called by users of Crashlog.
+#[doc(hidden)]
+pub fn try_generate_report(
     metadata: &ProgramMetadata,
     info: &PanicHookInfo,
     timestamp: &DateTime<Utc>,
@@ -175,13 +187,29 @@ fn try_generate_report(
     Some(path)
 }
 
+/// Wrapper function for macro hygiene
+#[doc(hidden)]
+pub fn get_timestamp() -> DateTime<Utc> {
+    chrono::Utc::now()
+}
+
 /// Registers Crashlog's panic handler.
 ///
-/// The `metadata` structure provides information about the program which will be included in the
-/// crash log file and in the message printed to the user.
+/// The first argument is a `metadata` structure which provides information about the program which
+/// will be included in the crash log file and in the message printed to the user.
 ///
-/// If `replace` is `false`, Crashlog's panic handler will be appended to the current (or if none is
-/// set, the default) panic handler. If `true`, the current panic handler will be replaced.
+/// If the second argument, `replace`, is `false`, Crashlog's panic handler will be appended to the
+/// current (or if none is set, the default) panic handler. If `true`, the current panic handler
+/// will be replaced.
+///
+/// The optional third argument allows you to specify a custom message to be printed to the user.
+/// This argument must be a string literal. It should use the regular [`std::fmt`] syntax for
+/// interpolating values. The fields of the `metadata` structure are all available as
+/// [named arguments][1], as well as `log_path`, which represents the path of the crash log file.
+/// For example, `"{package} crash log saved at {log_path}"`.
+/// If this argument is not given, [`DEFAULT_USER_MESSAGE_TEMPLATE`] is used.
+///
+/// [1]: std::fmt#named-parameters
 ///
 /// With `replace` set to `false`:
 /// ```text
@@ -228,59 +256,94 @@ fn try_generate_report(
 /// For your privacy, we don't automatically collect any information, so we rely on
 /// users to submit crash reports to help us find issues. Thank you!
 /// ```
-pub fn setup(metadata: ProgramMetadata, replace: bool) {
-    let old_hook = if replace {
-        None
-    } else {
-        Some(std::panic::take_hook())
-    };
-    let new_hook = Box::new(move |info: &PanicHookInfo| {
-        // Get timestamp before running old hook
-        let timestamp = Utc::now();
-
-        if let Some(hook) = &old_hook {
-            hook(info);
-        }
-
-        if let Some(report_path) =
-            try_generate_report(&metadata, info, &timestamp, &Backtrace::force_capture())
-        {
-            if std::io::stderr().is_terminal() {
-                eprint!("\x1b[31m");
-            }
-            if old_hook.is_some() {
-                eprintln!("\n---\n");
-            }
-            eprintln!(
-                "\
+#[macro_export]
+macro_rules! setup {
+    ($metadata:expr, $replace:expr) => {
+        $crate::setup!(
+            $metadata,
+            $replace,
+            // WARNING: If changing the message below, also change DEFAULT_USER_MESSAGE_TEMPLATE
+            "\
 Uh oh! {package} crashed.
 
 A crash log was saved at the following path:
-{report_path}
+{log_path}
 
 To help us figure out why this happened, please report this crash.
 Either open a new issue on GitHub [1] or send an email to the author(s) [2].
 Attach the file listed above or copy and paste its contents into the report.
 
-[1]: {repo_url}/issues/new
+[1]: {repository}/issues/new
 [2]: {authors}
 
 For your privacy, we don't automatically collect any information, so we rely on
-users to submit crash reports to help us find issues. Thank you!",
-                package = metadata.package,
-                report_path = report_path.display(),
-                repo_url = metadata.repository,
-                authors = metadata.authors,
-            );
-            if std::io::stderr().is_terminal() {
-                eprint!("\x1b[m");
-            }
+users to submit crash reports to help us find issues. Thank you!"
+        )
+    };
+
+    ($metadata:expr, $replace:expr, $template:literal) => {{
+        let metadata = $metadata;
+        let replace = $replace;
+        let old_hook = if replace {
+            None
         } else {
-            todo!()
-        }
-    });
-    std::panic::set_hook(new_hook);
+            Some(std::panic::take_hook())
+        };
+        let new_hook = ::std::boxed::Box::new(move |info: &::std::panic::PanicHookInfo| {
+            // Get timestamp before running old hook
+            let timestamp = $crate::get_timestamp();
+
+            if let Some(hook) = &old_hook {
+                hook(info);
+            }
+
+            if let Some(log_path) =
+                $crate::try_generate_report(&metadata, info, &timestamp, &::std::backtrace::Backtrace::force_capture())
+            {
+                if <::std::io::Stderr as ::std::io::IsTerminal>::is_terminal(&::std::io::stderr()) {
+                    eprint!("\x1b[31m");
+                }
+                if old_hook.is_some() {
+                    eprintln!("\n---\n");
+                }
+                eprintln!(
+                    // Use all format specifiers with widths of 0 so they don't actually get
+                    // produced. This is to silence the unused argument error.
+                    concat!("{package:.0}{binary:.0}{version:.0}{repository:.0}{authors:.0}{log_path:.0}", $template),
+                    package = metadata.package,
+                    binary = metadata.binary,
+                    version = metadata.version,
+                    repository = metadata.repository,
+                    authors = metadata.authors,
+                    log_path = log_path.display(),
+                );
+                if <::std::io::Stderr as ::std::io::IsTerminal>::is_terminal(&::std::io::stderr()) {
+                    eprint!("\x1b[m");
+                }
+            } else {
+                todo!()
+            }
+        });
+        ::std::panic::set_hook(new_hook);
+    }};
 }
+
+/// Default user message template
+pub const DEFAULT_USER_MESSAGE_TEMPLATE: &str = "\
+Uh oh! {package} crashed.
+
+A crash log was saved at the following path:
+{log_path}
+
+To help us figure out why this happened, please report this crash.
+Either open a new issue on GitHub [1] or send an email to the author(s) [2].
+Attach the file listed above or copy and paste its contents into the report.
+
+[1]: {repository}/issues/new
+[2]: {authors}
+
+For your privacy, we don't automatically collect any information, so we rely on
+users to submit crash reports to help us find issues. Thank you!";
 
 /// Metadata about the program to be printed in the crash report.
 ///
@@ -302,7 +365,7 @@ impl ProgramMetadata {
     ///
     /// ```
     /// use crashlog::cargo_metadata;
-    /// crashlog::setup(cargo_metadata!(default = "").capitalized(), false);
+    /// crashlog::setup!(cargo_metadata!(default = "").capitalized(), false);
     /// ```
     pub fn capitalized(self) -> Self {
         let mut new = self;
