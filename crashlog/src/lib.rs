@@ -68,6 +68,17 @@
 //!   13: _main
 //! ```
 //!
+//! <div class="warning">
+//!
+//! The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
+//! mode. The backtrace in the log above is produced by a program compiled in release mode, as that
+//! resembles production crashes.
+//!
+//! Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
+//! to see the difference.
+//!
+//! </div>
+//!
 //! # Usage
 //!
 //! Simply call [`crashlog::setup()`][crate::setup] with a [`ProgramMetadata`] structure describing

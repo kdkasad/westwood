@@ -1,3 +1,5 @@
+<!-- cargo-rdme start -->
+
 # Crashlog: Panic handling for humans
 
 Inspired by [human-panic](https://lib.rs/crates/human-panic), but with the following
@@ -7,10 +9,11 @@ goals/improvements:
   - Writes logs in a plain-text format; no need for [`serde`][serde].
   - Simplifies color support so third-party libraries aren't needed.
 - Customizable message (WIP)
+- Includes timestamps in logs
 
 [serde]: https://crates.io/crates/serde
 
-## Example
+# Example
 
 When a program using Crashlog panics, it prints a message like this:
 ```text
@@ -46,6 +49,7 @@ Version: 0.0.0
 
 Architecture: arm64
 Operating system: Mac OS 15.4.1 [64-bit]
+Timestamp: 2025-05-12 22:10:11.191447 UTC
 
 Message: explicit panic
 Source location: src/main.rs:100
@@ -66,7 +70,18 @@ Source location: src/main.rs:100
   13: _main
 ```
 
-## Usage
+<div class="warning">
+
+The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
+mode. The backtrace in the log above is produced by a program compiled in release mode, as that
+resembles production crashes.
+
+Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
+to see the difference.
+
+</div>
+
+# Usage
 
 Simply call [`crashlog::setup()`][crate::setup] with a [`ProgramMetadata`] structure describing
 your program. The second argument specifies whether to replace to the current panic handler (if
@@ -92,3 +107,5 @@ of that causing a compilation error.
 ```rust
 crashlog::setup(cargo_metadata!(default = "(unknown)"), true);
 ```
+
+<!-- cargo-rdme end -->
