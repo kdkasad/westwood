@@ -95,16 +95,7 @@ impl From<ColorMode> for ColorChoice {
 fn main() -> ExitCode {
     // Set custom panic handler for release mode
     if !cfg!(debug_assertions) && std::env::var_os("RUST_BACKTRACE").is_none() {
-        let mut metadata = cargo_metadata!();
-        let mut chars = metadata.package.chars();
-        metadata.package = chars
-            .next()
-            .expect("Expected non-empty package name")
-            .to_uppercase()
-            .chain(chars)
-            .collect::<String>()
-            .into();
-        crashlog::setup(metadata);
+        crashlog::setup(cargo_metadata!().capitalized());
     }
 
     let cli = CliOptions::parse();

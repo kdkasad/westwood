@@ -119,6 +119,29 @@ pub struct ProgramMetadata {
     pub authors: Cow<'static, str>,
 }
 
+impl ProgramMetadata {
+    /// Capitalizes the first letter of the package name.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// use crashlog::cargo_metadata;
+    /// crashlog::setup(cargo_metadata!().capitalized());
+    /// ```
+    pub fn capitalized(self) -> Self {
+        let mut new = self;
+        let mut chars = new.package.chars();
+        new.package = chars
+            .next()
+            .iter()
+            .flat_map(|first_letter| first_letter.to_uppercase())
+            .chain(chars)
+            .collect::<String>()
+            .into();
+        new
+    }
+}
+
 #[macro_export]
 macro_rules! cargo_metadata {
     () => {
@@ -130,4 +153,26 @@ macro_rules! cargo_metadata {
             authors: ::std::borrow::Cow::from(env!("CARGO_PKG_AUTHORS").replace(':', ", ")),
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capitalize_package_name() {
+        let metadata = ProgramMetadata {
+            package: "crashlog".into(),
+            binary: "".into(),
+            version: "".into(),
+            repository: "".into(),
+            authors: "".into(),
+        };
+        let new = metadata.capitalized();
+        assert_eq!("Crashlog", new.package);
+        let mut empty = new;
+        empty.package = "".into();
+        let new = empty.capitalized();
+        assert_eq!("", new.package);
+    }
 }
