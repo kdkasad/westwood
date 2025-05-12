@@ -15,4 +15,4 @@ rust-version.workspace = true
 
 [dependencies]
 getrandom = "0.3.3"
-os_info = "3.11.0"
+os_info = { version = "3.11.0", default-features = false }

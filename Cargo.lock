@@ -251,7 +251,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41fc863e2ca13dc2d5c34fb22ea4a588248ac14db929616ba65c45f21744b1e9"
 dependencies = [
  "log",
- "serde",
  "windows-sys 0.52.0",
 ]
 
