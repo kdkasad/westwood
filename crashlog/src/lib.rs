@@ -254,6 +254,7 @@ users to submit crash reports to help us find issues. Thank you!",
 }
 
 /// Metadata about the program to be printed in the crash report.
+///
 /// Typically sourced from `Cargo.toml` using the `CARGO_PKG_*` environment variables.
 /// Use [`cargo_metadata!()`] to create a `ProgramMetadata` filled with values from `Cargo.toml`.
 #[derive(Debug, Clone)]
