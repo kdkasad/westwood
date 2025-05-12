@@ -124,9 +124,9 @@ impl ProgramMetadata {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// ```
     /// use crashlog::cargo_metadata;
-    /// crashlog::setup(cargo_metadata!().capitalized());
+    /// crashlog::setup(cargo_metadata!(default = "").capitalized());
     /// ```
     pub fn capitalized(self) -> Self {
         let mut new = self;
@@ -146,13 +146,47 @@ impl ProgramMetadata {
 macro_rules! cargo_metadata {
     () => {
         $crate::ProgramMetadata {
-            package: ::std::borrow::Cow::from(env!("CARGO_PKG_NAME")),
-            binary: ::std::borrow::Cow::from(env!("CARGO_BIN_NAME")),
-            version: ::std::borrow::Cow::from(env!("CARGO_PKG_VERSION")),
-            repository: ::std::borrow::Cow::from(env!("CARGO_PKG_REPOSITORY")),
-            authors: ::std::borrow::Cow::from(env!("CARGO_PKG_AUTHORS").replace(':', ", ")),
+            package: ::std::borrow::Cow::Borrowed(env!("CARGO_PKG_NAME")),
+            binary: ::std::borrow::Cow::Borrowed(env!("CARGO_BIN_NAME")),
+            version: ::std::borrow::Cow::Borrowed(env!("CARGO_PKG_VERSION")),
+            repository: ::std::borrow::Cow::Borrowed(env!("CARGO_PKG_REPOSITORY")),
+            authors: $crate::cow_replace(env!("CARGO_PKG_AUTHORS"), ":", ", "),
         }
     };
+
+    (default = $placeholder:literal) => {
+        $crate::ProgramMetadata {
+            package: ::std::borrow::Cow::Borrowed(
+                option_env!("CARGO_PKG_NAME").unwrap_or($placeholder),
+            ),
+            binary: ::std::borrow::Cow::Borrowed(
+                option_env!("CARGO_BIN_NAME").unwrap_or($placeholder),
+            ),
+            version: ::std::borrow::Cow::Borrowed(
+                option_env!("CARGO_PKG_VERSION").unwrap_or($placeholder),
+            ),
+            repository: ::std::borrow::Cow::Borrowed(
+                option_env!("CARGO_PKG_REPOSITORY").unwrap_or($placeholder),
+            ),
+            authors: option_env!("CARGO_PKG_AUTHORS")
+                .map_or(::std::borrow::Cow::Borrowed($placeholder), |s| {
+                    $crate::cow_replace(s, ":", ", ")
+                }),
+        }
+    };
+}
+
+/// Like [`str::replace()`], but only clones the string if a replacement is needed.
+///
+/// This is an internal helper function and is not part of Crashlog's API.
+/// You should not use this function.
+#[doc(hidden)]
+pub fn cow_replace<'a>(s: &'a str, from: &str, to: &str) -> Cow<'a, str> {
+    if s.contains(from) {
+        Cow::Owned(s.replace(from, to))
+    } else {
+        Cow::Borrowed(s)
+    }
 }
 
 #[cfg(test)]
@@ -174,5 +208,23 @@ mod tests {
         empty.package = "".into();
         let new = empty.capitalized();
         assert_eq!("", new.package);
+    }
+
+    #[test]
+    fn metadata_placeholder() {
+        // For unit tests, Cargo does not set `CARGO_BIN_NAME`, so we expect the placeholder.
+        let metadata = cargo_metadata!(default = "place");
+        assert_eq!(metadata.binary, "place");
+    }
+
+    #[test]
+    fn test_cow_replace() {
+        // When found, string should be copied and replaced
+        let s = "abc:def";
+        assert!(matches!(cow_replace(s, ":", ","), Cow::Owned(val) if val == "abc,def"));
+
+        // When not found, string should not be copied
+        let s = "abc:def";
+        assert!(matches!(cow_replace(s, "+", " "), Cow::Borrowed(val) if val == s));
     }
 }
