@@ -2,6 +2,7 @@
 name = "crashlog"
 version = "0.0.0"
 description = "Panic handling for humans"
+categories = ["rust-patterns"]
 
 # Inherit these keys from workspace
 repository.workspace = true
