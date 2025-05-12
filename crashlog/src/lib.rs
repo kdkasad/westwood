@@ -94,7 +94,6 @@
 //! crashlog::setup(cargo_metadata!(default = "(unknown)"), true);
 //! ```
 
-use indoc::indoc;
 use std::{
     backtrace::Backtrace,
     borrow::Cow,
@@ -224,21 +223,21 @@ pub fn setup(metadata: ProgramMetadata, replace: bool) {
                 eprintln!("\n---\n");
             }
             eprintln!(
-                indoc! { "
-                    Uh oh! {package} crashed.
+                "\
+Uh oh! {package} crashed.
 
-                    A crash log was saved at the following path:
-                    {report_path}
+A crash log was saved at the following path:
+{report_path}
 
-                    To help us figure out why this happened, please report this crash.
-                    Either open a new issue on GitHub [1] or send an email to the author(s) [2].
-                    Attach the file listed above or copy and paste its contents into the report.
+To help us figure out why this happened, please report this crash.
+Either open a new issue on GitHub [1] or send an email to the author(s) [2].
+Attach the file listed above or copy and paste its contents into the report.
 
-                    [1]: {repo_url}/issues/new
-                    [2]: {authors}
+[1]: {repo_url}/issues/new
+[2]: {authors}
 
-                    For your privacy, we don't automatically collect any information, so we rely on
-                    users to submit crash reports to help us find issues. Thank you!" },
+For your privacy, we don't automatically collect any information, so we rely on
+users to submit crash reports to help us find issues. Thank you!",
                 package = metadata.package,
                 report_path = report_path.display(),
                 repo_url = metadata.repository,

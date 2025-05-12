@@ -153,7 +153,6 @@ name = "crashlog"
 version = "0.0.0"
 dependencies = [
  "getrandom",
- "indoc",
  "os_info",
 ]
 
