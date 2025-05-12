@@ -70,7 +70,7 @@ fn create_panic_hook(metadata: ProgramMetadata) -> PanicHookHandler {
     Box::new(move |info: &PanicHookInfo| {
         if let Some(report_path) = try_generate_report(&metadata, info) {
             if std::io::stderr().is_terminal() {
-                eprintln!("\x1b[31m");
+                eprint!("\x1b[31m");
             }
             eprintln!(
                 indoc! { "
@@ -94,7 +94,7 @@ fn create_panic_hook(metadata: ProgramMetadata) -> PanicHookHandler {
                 authors = metadata.authors,
             );
             if std::io::stderr().is_terminal() {
-                eprintln!("\x1b[m");
+                eprint!("\x1b[m");
             }
         } else {
             todo!()
