@@ -7,6 +7,7 @@
 //!   - Writes logs in a plain-text format; no need for [`serde`][serde].
 //!   - Simplifies color support so third-party libraries aren't needed.
 //! - Customizable message (WIP)
+//! - Includes timestamps in logs
 //!
 //! [serde]: https://crates.io/crates/serde
 //!
@@ -46,6 +47,7 @@
 //!
 //! Architecture: arm64
 //! Operating system: Mac OS 15.4.1 [64-bit]
+//! Timestamp: 2025-05-12 22:10:11.191447 UTC
 //!
 //! Message: explicit panic
 //! Source location: src/main.rs:100
@@ -103,11 +105,18 @@ use std::{
     path::PathBuf,
 };
 
+use chrono::{DateTime, Utc};
+
 /// Attempts to generate a crash log and write it to a file.
 /// The file is placed in a temporary directory as given by [`std::env::temp_dir()`].
 /// If creating or writing to the file fails, `None` is returned, otherwise `Some` is returned with
 /// the path of the log file.
-fn try_generate_report(metadata: &ProgramMetadata, info: &PanicHookInfo) -> Option<PathBuf> {
+fn try_generate_report(
+    metadata: &ProgramMetadata,
+    info: &PanicHookInfo,
+    timestamp: &DateTime<Utc>,
+    backtrace: &Backtrace,
+) -> Option<PathBuf> {
     // Construct filename
     let mut path = std::env::temp_dir();
     path.push(format!("{:08x}.txt", getrandom::u64().ok()?));
@@ -116,14 +125,18 @@ fn try_generate_report(metadata: &ProgramMetadata, info: &PanicHookInfo) -> Opti
     let file = File::create(&path).ok()?;
     let mut w = BufWriter::new(file);
 
-    // Write build/OS information
+    // Write build information
     let os = os_info::get();
     writeln!(w, "Package: {}", metadata.package).ok()?;
     writeln!(w, "Binary: {}", metadata.binary).ok()?;
     writeln!(w, "Version: {}", metadata.version).ok()?;
+
     writeln!(w).ok()?;
+
+    // Write system information
     writeln!(w, "Architecture: {}", os.architecture().unwrap_or("(unknown)")).ok()?;
     writeln!(w, "Operating system: {os}").ok()?;
+    writeln!(w, "Timestamp: {timestamp}").ok()?;
 
     writeln!(w).ok()?;
 
@@ -145,7 +158,7 @@ fn try_generate_report(metadata: &ProgramMetadata, info: &PanicHookInfo) -> Opti
     writeln!(w).ok()?;
 
     // Write backtrace
-    write!(w, "{}", Backtrace::force_capture()).ok()?;
+    write!(w, "{}", backtrace).ok()?;
 
     w.flush().ok()?;
     Some(path)
@@ -211,11 +224,16 @@ pub fn setup(metadata: ProgramMetadata, replace: bool) {
         Some(std::panic::take_hook())
     };
     let new_hook = Box::new(move |info: &PanicHookInfo| {
+        // Get timestamp before running old hook
+        let timestamp = Utc::now();
+
         if let Some(hook) = &old_hook {
             hook(info);
         }
 
-        if let Some(report_path) = try_generate_report(&metadata, info) {
+        if let Some(report_path) =
+            try_generate_report(&metadata, info, &timestamp, &Backtrace::force_capture())
+        {
             if std::io::stderr().is_terminal() {
                 eprint!("\x1b[31m");
             }

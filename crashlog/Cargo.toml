@@ -14,5 +14,6 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+chrono = { version = "0.4.41", features = ["now"], default-features = false }
 getrandom = "0.3.3"
 os_info = { version = "3.11.0", default-features = false }
