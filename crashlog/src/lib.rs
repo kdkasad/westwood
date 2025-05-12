@@ -15,8 +15,6 @@ use std::{
     path::PathBuf,
 };
 
-type PanicHookHandler = Box<dyn Fn(&PanicHookInfo) + Send + Sync + 'static>;
-
 /// Attempts to generate a crash log and write it to a file.
 /// The file is placed in a temporary directory as given by [`std::env::temp_dir()`].
 /// If creating or writing to the file fails, `None` is returned, otherwise `Some` is returned with
@@ -65,12 +63,76 @@ fn try_generate_report(metadata: &ProgramMetadata, info: &PanicHookInfo) -> Opti
     Some(path)
 }
 
-/// Creates and returns the panic hook closure.
-fn create_panic_hook(metadata: ProgramMetadata) -> PanicHookHandler {
-    Box::new(move |info: &PanicHookInfo| {
+/// Registers Crashlog's panic handler.
+///
+/// The `metadata` structure provides information about the program which will be included in the
+/// crash log file and in the message printed to the user.
+///
+/// If `replace` is `false`, Crashlog's panic handler will be appended to the current (or if none is
+/// set, the default) panic handler. If `true`, the current panic handler will be replaced.
+///
+/// With `replace` set to `false`:
+/// ```text
+/// $ westwood
+///
+/// thread 'main' panicked at src/main.rs:100:5:
+/// explicit panic
+/// note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+///
+///
+/// ---
+///
+/// Uh oh! Westwood crashed.
+///
+/// A crash log was saved at the following path:
+/// /var/folders/sr/kr0r9zfn6wj5pfw35xl47wlm0000gn/T/20ea72fca069a0b7.txt
+///
+/// To help us figure out why this happened, please report this crash.
+/// Either open a new issue on GitHub [1] or send an email to the author(s) [2].
+/// Attach the file listed above or copy and paste its contents into the report.
+///
+/// [1]: https://github.com/kdkasad/westwood/issues/new
+/// [2]: Kian Kasad <kian@kasad.com>
+///
+/// For your privacy, we don't automatically collect any information, so we rely on
+/// users to submit crash reports to help us find issues. Thank you!
+/// ```
+///
+/// With `replace` set to `true`:
+/// ```text
+/// $ westwood
+/// Uh oh! Westwood crashed.
+///
+/// A crash log was saved at the following path:
+/// /var/folders/sr/kr0r9zfn6wj5pfw35xl47wlm0000gn/T/20ea72fca069a0b7.txt
+///
+/// To help us figure out why this happened, please report this crash.
+/// Either open a new issue on GitHub [1] or send an email to the author(s) [2].
+/// Attach the file listed above or copy and paste its contents into the report.
+///
+/// [1]: https://github.com/kdkasad/westwood/issues/new
+/// [2]: Kian Kasad <kian@kasad.com>
+///
+/// For your privacy, we don't automatically collect any information, so we rely on
+/// users to submit crash reports to help us find issues. Thank you!
+/// ```
+pub fn setup(metadata: ProgramMetadata, replace: bool) {
+    let old_hook = if replace {
+        None
+    } else {
+        Some(std::panic::take_hook())
+    };
+    let new_hook = Box::new(move |info: &PanicHookInfo| {
+        if let Some(hook) = &old_hook {
+            hook(info);
+        }
+
         if let Some(report_path) = try_generate_report(&metadata, info) {
             if std::io::stderr().is_terminal() {
                 eprint!("\x1b[31m");
+            }
+            if old_hook.is_some() {
+                eprintln!("\n---\n");
             }
             eprintln!(
                 indoc! { "
@@ -99,12 +161,8 @@ fn create_panic_hook(metadata: ProgramMetadata) -> PanicHookHandler {
         } else {
             todo!()
         }
-    })
-}
-
-/// Registers the custom user-friendly panic handler.
-pub fn setup(metadata: ProgramMetadata) {
-    std::panic::set_hook(create_panic_hook(metadata));
+    });
+    std::panic::set_hook(new_hook);
 }
 
 /// Metadata about the program to be printed in the crash report.
@@ -126,7 +184,7 @@ impl ProgramMetadata {
     ///
     /// ```
     /// use crashlog::cargo_metadata;
-    /// crashlog::setup(cargo_metadata!(default = "").capitalized());
+    /// crashlog::setup(cargo_metadata!(default = "").capitalized(), false);
     /// ```
     pub fn capitalized(self) -> Self {
         let mut new = self;
