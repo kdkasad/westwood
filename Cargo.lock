@@ -170,6 +170,7 @@ dependencies = [
  "chrono",
  "getrandom",
  "os_info",
+ "pretty_assertions",
 ]
 
 [[package]]
