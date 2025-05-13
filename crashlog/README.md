@@ -8,7 +8,7 @@ goals/improvements:
   - Uses [`std::backtrace`] for backtraces instead of a third-party crate.
   - Writes logs in a plain-text format; no need for [`serde`][serde].
   - Simplifies color support so third-party libraries aren't needed.
-- Customizable message (WIP)
+- Customizable message
 - Includes timestamps in logs
 
 [serde]: https://crates.io/crates/serde
