@@ -1,6 +1,6 @@
 [package]
 name = "crashlog"
-version = "0.0.0"
+version = "0.1.0"
 description = "Panic handling for humans"
 homepage = "https://github.com/kdkasad/westwood/tree/master/crashlog"
 categories = ["rust-patterns"]
