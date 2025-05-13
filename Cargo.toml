@@ -1,13 +1,35 @@
+## Workspace
+
+[workspace]
+members = ["crashlog"]
+
+[workspace.package]
+repository = "https://github.com/kdkasad/westwood"
+license = "Apache-2.0"
+authors = ["Kian Kasad <kian@kasad.com>"]
+exclude = ["/.nvim*", "/.github/"]
+edition = "2021"
+rust-version = "1.85"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+missing_panics_doc = "allow"
+too_many_lines = "allow"
+
+## Westwood package
+
 [package]
 name = "westwood"
 version = "0.0.0"
 description = "A C source code linter for Purdue's CS 240 course"
-repository = "https://github.com/kdkasad/westwood"
-license = "Apache-2.0"
-authors = ["Kian Kasad <kian@kasad.com>"]
-edition = "2021"
-rust-version = "1.85"
-exclude = ["/.nvim*", "/.github/"]
+
+# Inherit these keys from workspace
+repository.workspace = true
+license.workspace = true
+authors.workspace = true
+exclude.workspace = true
+edition.workspace = true
+rust-version.workspace = true
 
 [build-dependencies]
 cc = "*"
@@ -16,6 +38,7 @@ cc = "*"
 clap = { version = "4.5.31", features = ["cargo", "derive"] }
 clap-stdin = "0.6.0"
 codespan-reporting = "0.12.0"
+crashlog = { path = "crashlog" }
 indoc = "2.0.6"
 tree-sitter = "0.25.3"
 tree-sitter-c = "0.23.4"

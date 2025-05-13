@@ -36,7 +36,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Lint code
-        run: cargo clippy --all-targets
+        run: cargo clippy --all-targets --workspace --locked
 
   fmt:
     name: Check formatting
@@ -54,7 +54,7 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Check formatting
-        run: cargo fmt --check
+        run: cargo fmt --check --all
 
   test:
     name: Run tests
@@ -72,8 +72,8 @@ jobs:
       - name: Run tests
         run: cargo test --workspace --all-targets --no-fail-fast --locked
 
-  # Adding this because the repository is private (for now) and we don't
-  # want to run the whole build workflow on each push
+  # Adding this because we don't want to run the whole build workflow on each
+  # push
   build:
     name: Build project
     runs-on: ubuntu-latest
@@ -88,4 +88,4 @@ jobs:
         uses: Swatinem/rust-cache@v2
 
       - name: Compile project
-        run: cargo build --release --locked
+        run: cargo build --workspace --all-targets --release --locked
