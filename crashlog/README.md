@@ -70,25 +70,12 @@ Source location: src/main.rs:100
   13: _main
 ```
 
-<div class="warning">
-
-The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
-mode. The backtrace in the log above is produced by a program compiled in release mode, as that
-resembles production crashes.
-
-Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
-to see the difference.
-
-</div>
-
 # Usage
 
-Simply call [`crashlog::setup()`][crate::setup] with a [`ProgramMetadata`] structure describing
-your program. The second argument specifies whether to replace to the current panic handler (if
-`true`) or append to it (if `false`); see [`setup()`] for more details.
+Simply call [`crashlog::setup!()`][crate::setup!] to register the panic handler.
 
 ```rust
-crashlog::setup(ProgramMetadata { /* ... */ }, false);
+crashlog::setup!(ProgramMetadata { /* ... */ }, false);
 ```
 
 You can use the [`cargo_metadata!()`] helper macro to automatically extract the metadata from
@@ -98,14 +85,40 @@ your `Cargo.toml` file.
 // This example doesn't compile because tests/examples don't have the proper metadata
 // set by Cargo.
 use crashlog::cargo_metadata;
-crashlog::setup(cargo_metadata!().capitalized(), false);
+crashlog::setup!(cargo_metadata!().capitalized(), false);
 ```
 
 You can also provide a default placeholder in case some metadata entries are missing, instead
 of that causing a compilation error.
 
 ```rust
-crashlog::setup(cargo_metadata!(default = "(unknown)"), true);
+crashlog::setup!(cargo_metadata!(default = "(unknown)"), true);
 ```
+
+Finally, you can provide your own panic message to be printed to the user. See [`setup!()`] for
+information on how to do so.
+
+```rust
+crashlog::setup!(cargo_metadata!(default = "(unknown)"), false, "\
+{package} crashed. Please go to {repository}/issues/new
+and paste the contents of {log_path}.
+");
+```
+
+# Implementation notes
+
+## When Crashlog fails
+
+Creating the crash log file can fail. If it does, the original panic hook is called,
+regardless of the value of the `replace` argument to [`setup!()`].
+
+## Backtrace formatting
+
+The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
+mode. The backtrace in the example log above is produced by a program compiled in release mode,
+as that resembles production crashes.
+
+Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
+to see the difference.
 
 <!-- cargo-rdme end -->
