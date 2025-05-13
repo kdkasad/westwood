@@ -68,17 +68,6 @@
 //!   13: _main
 //! ```
 //!
-//! <div class="warning">
-//!
-//! The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
-//! mode. The backtrace in the log above is produced by a program compiled in release mode, as that
-//! resembles production crashes.
-//!
-//! Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
-//! to see the difference.
-//!
-//! </div>
-//!
 //! # Usage
 //!
 //! Simply call [`crashlog::setup!()`][crate::setup!] to register the panic handler.
@@ -115,6 +104,22 @@
 //! and paste the contents of {log_path}.
 //! ");
 //! ```
+//!
+//! # Implementation notes
+//!
+//! ## When Crashlog fails
+//!
+//! Creating the crash log file can fail. If it does, the original panic hook is called,
+//! regardless of the value of the `replace` argument to [`setup!()`].
+//!
+//! ## Backtrace formatting
+//!
+//! The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
+//! mode. The backtrace in the example log above is produced by a program compiled in release mode,
+//! as that resembles production crashes.
+//!
+//! Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
+//! to see the difference.
 
 use std::{
     backtrace::Backtrace,
@@ -284,17 +289,13 @@ users to submit crash reports to help us find issues. Thank you!"
     ($metadata:expr, $replace:expr, $template:literal) => {{
         let metadata = $metadata;
         let replace = $replace;
-        let old_hook = if replace {
-            None
-        } else {
-            Some(std::panic::take_hook())
-        };
+        let old_hook = std::panic::take_hook();
         let new_hook = ::std::boxed::Box::new(move |info: &::std::panic::PanicHookInfo| {
             // Get timestamp before running old hook
             let timestamp = $crate::get_timestamp();
 
-            if let Some(hook) = &old_hook {
-                hook(info);
+            if !replace {
+                old_hook(info);
             }
 
             if let Some(log_path) =
@@ -303,7 +304,7 @@ users to submit crash reports to help us find issues. Thank you!"
                 if <::std::io::Stderr as ::std::io::IsTerminal>::is_terminal(&::std::io::stderr()) {
                     eprint!("\x1b[31m");
                 }
-                if old_hook.is_some() {
+                if !replace {
                     eprintln!("\n---\n");
                 }
                 eprintln!(
@@ -320,8 +321,10 @@ users to submit crash reports to help us find issues. Thank you!"
                 if <::std::io::Stderr as ::std::io::IsTerminal>::is_terminal(&::std::io::stderr()) {
                     eprint!("\x1b[m");
                 }
-            } else {
-                todo!()
+            } else if !replace {
+                // If creating the crash log failed, and we didn't already run the default hook,
+                // run it now.
+                old_hook(info);
             }
         });
         ::std::panic::set_hook(new_hook);
