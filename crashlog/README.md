@@ -1,17 +1,24 @@
-<!-- cargo-rdme start -->
-
 # Crashlog: Panic handling for humans
+
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/kdkasad/westwood/ci.yml?logo=github&label=CI)](https://github.com/kdkasad/westwood/actions/workflows/ci.yml)
+[![crates.io version badge](https://img.shields.io/crates/v/crashlog)](https://crates.io/crates/crashlog)
+[![docs.rs status badge](https://img.shields.io/docsrs/crashlog)](https://docs.rs/crashlog)
+[![License badge](https://img.shields.io/crates/l/crashlog)](https://github.com/kdkasad/westwood/blob/master/LICENSE)
 
 Inspired by [human-panic](https://lib.rs/crates/human-panic), but with the following
 goals/improvements:
 - Fewer dependencies
-  - Uses [`std::backtrace`] for backtraces instead of a third-party crate.
+  - Uses `std::backtrace` for backtraces instead of a third-party crate.
   - Writes logs in a plain-text format; no need for [`serde`][serde].
   - Simplifies color support so third-party libraries aren't needed.
 - Customizable message
 - Includes timestamps in logs
 
-[serde]: https://crates.io/crates/serde
+[serde]: https://lib.rs/crates/serde
+
+This library is a sub-project of [Westwood], and lives within Westwood's repository.
+
+[Westwood]: https://github.com/kdkasad/westwood
 
 # Example
 
@@ -70,15 +77,29 @@ Source location: src/main.rs:100
   13: _main
 ```
 
+# Installation
+
+You can add Crashlog to your Rust project using Cargo:
+```
+$ cargo add crashlog
+```
+This will use the latest release published on [crates.io](https://crates.io).
+
+For the latest development version, you can tell Cargo to install Crashlog from
+the GitHub repository:
+```
+$ cargo add crashlog --git https://github.com/kdkasad/westwood
+```
+
 # Usage
 
-Simply call [`crashlog::setup!()`][crate::setup!] to register the panic handler.
+Simply call `crashlog::setup!()` to register the panic handler.
 
 ```rust
 crashlog::setup!(ProgramMetadata { /* ... */ }, false);
 ```
 
-You can use the [`cargo_metadata!()`] helper macro to automatically extract the metadata from
+You can use the `cargo_metadata!()` helper macro to automatically extract the metadata from
 your `Cargo.toml` file.
 
 ```rust
@@ -95,7 +116,7 @@ of that causing a compilation error.
 crashlog::setup!(cargo_metadata!(default = "(unknown)"), true);
 ```
 
-Finally, you can provide your own panic message to be printed to the user. See [`setup!()`] for
+Finally, you can provide your own panic message to be printed to the user. See `setup!()` for
 information on how to do so.
 
 ```rust
@@ -109,16 +130,15 @@ and paste the contents of {log_path}.
 
 ## When Crashlog fails
 
-Creating the crash log file can fail. If it does, the original panic hook is called,
-regardless of the value of the `replace` argument to [`setup!()`].
+Creating the crash log file can fail. If it does, the original panic hook is
+called, regardless of the value of the `replace` argument to `setup!()`.
+Crashlog's panic hook will not trigger.
 
 ## Backtrace formatting
 
-The backtrace is handled by [`std::backtrace`], and looks different in debug mode vs. release
+The backtrace is handled by `std::backtrace`, and looks different in debug mode vs. release
 mode. The backtrace in the example log above is produced by a program compiled in release mode,
 as that resembles production crashes.
 
 Run `cargo run --example backtrace` with and without the `-r` flag in this project's repository
 to see the difference.
-
-<!-- cargo-rdme end -->
