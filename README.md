@@ -16,7 +16,7 @@ content.
 
 This project is very new and is currently a work in progress.
 Development began on March 6, 2025.
-If this message hasn't been removed by the end of summer 2025, this project has
+If there haven't been any commits made in the last few months, this project has
 probably been abandoned.
 
 ## For users
