@@ -1,5 +1,8 @@
 # Westwood
 
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/kdkasad/westwood/ci.yml?logo=github&label=CI)](https://github.com/kdkasad/westwood/actions/workflows/ci.yml)
+[![License badge](https://img.shields.io/github/license/kdkasad/westwood?color=blue)](https://github.com/kdkasad/westwood/blob/master/LICENSE)
+
 The successor to [eastwood-tidy], a linter for [Purdue's CS 240 course][cs240].
 
 [eastwood-tidy]: https://github.com/novafacing/eastwood-tidy
