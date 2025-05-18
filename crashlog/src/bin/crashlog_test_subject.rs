@@ -13,6 +13,11 @@ pub fn main() {
         match arg.as_str() {
             "--custom" => opts.custom_message = true,
             "--replace" => opts.replace = true,
+            arg if arg.starts_with("--seed=") => {
+                let seed_str = arg.strip_prefix("--seed=").unwrap();
+                let seed = seed_str.parse::<u64>().unwrap();
+                fastrand::seed(seed);
+            }
             _ => (),
         }
     }

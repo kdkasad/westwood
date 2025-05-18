@@ -3,42 +3,34 @@
 
 use pretty_assertions::assert_eq;
 
-use std::{
-    iter::once,
-    process::{Command, Stdio},
-};
+use std::process::{Command, Stdio};
 
 macro_rules! test {
     ($funcname:ident, $args:expr, $expected:expr) => {
         #[test]
         fn $funcname() {
             let output = Command::new(env!("CARGO_BIN_EXE_crashlog_test_subject"))
-                .args($args.split_whitespace())
+                .args($args.split_whitespace().chain(std::iter::once("--seed=1")))
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .env_remove("RUST_BACKTRACE")
                 .output()
                 .unwrap();
             assert!(output.stdout.is_empty());
-            assert_eq!($expected, strip_log_path(&output.stderr));
+            fastrand::seed(1);
+            let path =
+                std::env::temp_dir().join(format!("{:08x}.txt", fastrand::u64(0..=u64::MAX)));
+            let expected = format!(concat!("{path:.0}", $expected), path = path.display());
+            assert_eq!(expected, String::from_utf8(output.stderr).unwrap());
         }
     };
-}
-
-// Since the log path is not predictable, we need to strip it
-fn strip_log_path(bytes: &[u8]) -> String {
-    let text = std::str::from_utf8(bytes).expect("Expected UTF-8");
-    text.lines()
-        .filter(|line| !line.ends_with(".txt"))
-        .flat_map(|line| line.chars().chain(once('\n')))
-        .collect()
 }
 
 test!(
     test_default_append,
     "",
     "
-thread 'main' panicked at crashlog/src/bin/crashlog_test_subject.rs:28:5:
+thread 'main' panicked at crashlog/src/bin/crashlog_test_subject.rs:33:5:
 Boo!
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
@@ -47,6 +39,7 @@ note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 Uh oh! crashlog crashed.
 
 A crash log was saved at the following path:
+{path}
 
 To help us figure out why this happened, please report this crash.
 Either open a new issue on GitHub [1] or send an email to the author(s) [2].
@@ -67,6 +60,7 @@ test!(
 Uh oh! crashlog crashed.
 
 A crash log was saved at the following path:
+{path}
 
 To help us figure out why this happened, please report this crash.
 Either open a new issue on GitHub [1] or send an email to the author(s) [2].
@@ -84,7 +78,7 @@ test!(
     test_custom_append,
     "--custom",
     "
-thread 'main' panicked at crashlog/src/bin/crashlog_test_subject.rs:28:5:
+thread 'main' panicked at crashlog/src/bin/crashlog_test_subject.rs:33:5:
 Boo!
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 
