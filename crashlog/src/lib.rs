@@ -147,7 +147,7 @@ pub fn try_generate_report(
 ) -> Option<PathBuf> {
     // Construct filename
     let mut path = std::env::temp_dir();
-    path.push(format!("{:08x}.txt", getrandom::u64().ok()?));
+    path.push(format!("{:08x}.txt", fastrand::u64(0..=u64::MAX)));
 
     // Open file and create buffer
     let file = File::create(&path).ok()?;
