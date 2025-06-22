@@ -2,20 +2,18 @@ name: Build Westwood binaries
 
 on:
   workflow_call:
-  push:
-    branches:
-      - 'release/*'
-    tags:
-      - 'v*'
   pull_request:
     branches:
       - master
       - 'release/*'
 
+permissions:
+  id-token: write
+  contents: read
+  attestations: write
+
 env:
   CARGO_INCREMENTAL: 0
-  RUST_BACKTRACE: short
-  RUSTFLAGS: '-D warnings'
 
 jobs:
   build:
@@ -26,41 +24,41 @@ jobs:
         include:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
-            artifact: westwood-x86_64-windows.zip
+            artifact: westwood-x86_64-windows.exe
 
           - os: windows-latest
             target: i686-pc-windows-msvc
-            artifact: westwood-i686-windows.zip
+            artifact: westwood-i686-windows.exe
 
           - os: windows-latest
             target: aarch64-pc-windows-msvc
-            artifact: westwood-aarch64-windows.zip
+            artifact: westwood-aarch64-windows.exe
 
           - os: macos-latest
             target: x86_64-apple-darwin
-            artifact: westwood-x86_64-macos.tar.gz
+            artifact: westwood-x86_64-macos
 
           - os: macos-latest
             target: aarch64-apple-darwin
-            artifact: westwood-aarch64-macos.tar.gz
+            artifact: westwood-aarch64-macos
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            artifact: westwood-x86_64-linux-gnu.tar.gz
+            artifact: westwood-x86_64-linux-gnu
 
           - os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            artifact: westwood-aarch64-linux-gnu.tar.gz
+            artifact: westwood-aarch64-linux-gnu
             use-cross: true
 
           - os: ubuntu-latest
             target: armv7-unknown-linux-gnueabihf
-            artifact: westwood-armv7hf-linux-gnu.tar.gz
+            artifact: westwood-armv7hf-linux-gnu
             use-cross: true
 
           - os: ubuntu-latest
             target: x86_64-unknown-linux-musl
-            artifact: westwood-x86_64-linux-musl.tar.gz
+            artifact: westwood-x86_64-linux-musl
 
     steps:
       - name: Install musl-gcc
@@ -80,28 +78,37 @@ jobs:
         if: ${{ matrix.use-cross != true }}
         run: cargo build --target ${{ matrix.target }} --release --locked
 
-      - name: Install cross
+      - name: Install cross (if not cached)
         if: ${{ matrix.use-cross == true }}
-        run: cargo install cross
+        run: cross || cargo install cross
 
       - name: Compile (using cross)
         if: ${{ matrix.use-cross == true }}
         run: cross build --target ${{ matrix.target }} --release --locked
 
-      - name: Create archive (Windows)
-        if: ${{ contains(matrix.os, 'windows') }}
-        run: ${{ format('Compress-Archive target/{0}/release/westwood.exe {1}', matrix.target, matrix.artifact) }}
+      - name: Rename binary for target
+        id: rename
+        env:
+          SRC: ${{ format(
+              'target/{0}/release/westwood{1}',
+              matrix.target,
+              contains(matrix.os, 'windows') && '.exe' || ''
+            ) }}
+          DST: ${{ format('target/{0}/release/{1}', matrix.target, matrix.artifact) }}
+        shell: bash
+        run: |
+          mv "$SRC" "$DST"
+          echo "path=$DST" >> "$GITHUB_OUTPUT"
 
-      - name: Create archive (macOS)
-        if: ${{ contains(matrix.os, 'macos') }}
-        run: ${{ format('gtar -czvf {1} -C target/{0}/release westwood', matrix.target, matrix.artifact) }}
-
-      - name: Create archive (Linux)
-        if: ${{ contains(matrix.os, 'ubuntu') }}
-        run: ${{ format('tar -czvf {1} -C target/{0}/release westwood', matrix.target, matrix.artifact) }}
+      - name: Attest build provenance
+        # Runs only if called from a workflow triggered by a release
+        if: ${{ github.event_name == 'workflow_call' && github.event.release != null }}
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: ${{ steps.rename.outputs.path }}
 
       - name: Upload archive artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ matrix.artifact }}
+          path: ${{ steps.rename.outputs.path }}

@@ -5,17 +5,28 @@ on:
     types:
       - published
 
+
 jobs:
   build:
     name: Build
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
     uses: ./.github/workflows/build.yml
 
   publish-docs:
     name: Publish documentation
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
     uses: ./.github/workflows/publish-docs.yml
 
   publish-binaries:
     name: Upload Westwood binaries to GitHub release
+    permissions:
+      contents: write
     if: ${{ github.event_name == 'release' }}
     needs: [build]
     runs-on: ubuntu-latest
@@ -25,13 +36,16 @@ jobs:
 
       - name: Download binary artifacts
         uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+
+      - name: List downloaded files
+        run: ls -lAhR
 
       - name: Publish binaries
-        run: |
-          find .
-          gh release upload ${{ github.ref_name }} $(find . -type f '(' -name 'westwood-*-*.zip' -or -name 'westwood-*-*.tar.gz' ')' )
+        run: gh release upload ${{ github.ref_name }} westwood-*
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
 
   publish-to-crates-io:
     name: Publish release to crates.io
