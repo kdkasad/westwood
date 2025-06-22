@@ -1,4 +1,12 @@
 name: CI
+run-name: |
+  ${{
+    format(
+      'CI pipeline for {0} by @{1}',
+      github.event_name == 'pull_request' && format('#{0}', github.event.number) || github.ref_name,
+      github.actor
+    )
+  }}
 
 on:
   push:
