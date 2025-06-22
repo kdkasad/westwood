@@ -1,4 +1,12 @@
 name: CI
+run-name: |
+  ${{
+    format(
+      'CI pipeline for {0} by @{1}',
+      github.event_name == 'pull_request' && format('#{0}', github.event.number) || github.ref_name,
+      github.actor
+    )
+  }}
 
 on:
   push:
@@ -10,6 +18,7 @@ on:
       - "Cargo.lock"
       - "build.rs"
       - ".github/workflows/ci.yml"
+      - ".config/nextest.toml"
   pull_request:
     branches:
       - master
@@ -59,6 +68,10 @@ jobs:
   test:
     name: Run tests
     runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      pull-requests: write
+      contents: read
     steps:
       - name: Check out sources
         uses: actions/checkout@v4
@@ -69,8 +82,20 @@ jobs:
       - name: Cache build artifacts
         uses: Swatinem/rust-cache@v2
 
+      - name: Install nextest (if not cached)
+        run: cargo nextest --version || cargo install --locked cargo-nextest
+
       - name: Run tests
-        run: cargo test --workspace --all-targets --no-fail-fast --locked
+        run: cargo nextest run --profile ci --run-ignored all --locked --all-targets --workspace
+
+      - name: Publish test results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        if: (!cancelled())
+        with:
+          check_run: false
+          comment_mode: ${{ (github.event_name == 'pull_request') && 'always' || 'off' }}
+          files: |
+            target/nextest/ci/junit.xml
 
   # Adding this because we don't want to run the whole build workflow on each
   # push
