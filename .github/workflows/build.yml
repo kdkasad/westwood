@@ -6,6 +6,15 @@ on:
     branches:
       - master
       - 'release/*'
+  push:
+    tags:
+      - 'v*'
+    branches:
+      - 'release/*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.sha }}
+  cancel-in-progress: true
 
 permissions:
   id-token: write
@@ -62,7 +71,7 @@ jobs:
 
     steps:
       - name: Install musl-gcc
-        if: ${{ contains(matrix.os, 'ubuntu') }}
+        if: ${{ contains(matrix.target, 'musl') }}
         run: sudo apt-get install musl-tools
 
       - uses: actions/checkout@v4
@@ -101,8 +110,7 @@ jobs:
           echo "path=$DST" >> "$GITHUB_OUTPUT"
 
       - name: Attest build provenance
-        # Runs only if called from a workflow triggered by a release
-        if: ${{ github.event_name == 'workflow_call' && github.event.release != null }}
+        if: ${{ github.event_name != 'pull_request' }}
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: ${{ steps.rename.outputs.path }}
