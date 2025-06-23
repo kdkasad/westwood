@@ -21,20 +21,14 @@ probably been abandoned.
 
 ## For users
 
-Westwood is still under active development, so we do not yet provide releases.
-You'll have to follow one of the following methods to get a usable copy of Westwood.
+There are a few ways to download/install Westwood.
 
-### Download from the CI workflow
+### Download from latest release
 
-Westwood's repository has a GitHub Actions workflow which builds binaries for
-many platforms for each Pull Request. These may not reflect the latest version
-of Westwood, but are likely the easiest way to obtain a copy.
+Westwood binaries are automatically built and published for each release.
 
-1. Go to the [Build Westwood binaries][build.yml] action.
-2. Select a recent run.
-3. Download the artifact matching your platform.
-
-[build.yml]: https://github.com/kdkasad/westwood/actions/workflows/build.yml
+1. Go to the [latest release](https://github.com/kdkasad/westwood/releases).
+2. Under **Assets**, download the binary matching your platform.
 
 ### Build from sources (using cargo install)
 
