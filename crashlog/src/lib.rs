@@ -186,7 +186,7 @@ pub fn try_generate_report(
     writeln!(w).ok()?;
 
     // Write backtrace
-    write!(w, "{}", backtrace).ok()?;
+    write!(w, "{backtrace}").ok()?;
 
     w.flush().ok()?;
     Some(path)

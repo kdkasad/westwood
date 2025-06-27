@@ -148,7 +148,7 @@ impl Rule for Rule02a {
                         end_point: end_node.end_position(),
                     }
                 }
-                n => panic!("Expected 1 or 2 captures, got {}", n),
+                n => panic!("Expected 1 or 2 captures, got {n}"),
             };
 
             // If not split across two lines, skip this match
@@ -189,8 +189,7 @@ impl Rule for Rule02a {
                 Diagnostic::warning()
                     .with_code("II:A")
                     .with_message(format!(
-                        "Wrapped expressions/statements must be indented by at least {} spaces",
-                        WRAPPED_LINE_INDENT_WIDTH
+                        "Wrapped expressions/statements must be indented by at least {WRAPPED_LINE_INDENT_WIDTH} spaces",
                     ))
                     .with_labels(labels)
                     .with_label(
