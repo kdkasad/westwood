@@ -27,5 +27,5 @@ pub trait Rule {
     /// - `tree`: [`Tree`] representing the file.
     /// - `code`: Text/code of the given file.
     #[must_use]
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>>;
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>>;
 }

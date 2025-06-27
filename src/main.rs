@@ -146,7 +146,7 @@ fn main() -> ExitCode {
     // Do checks
     let rules: Vec<Box<dyn Rule>> = crate::rules::get_rules();
     for rule in rules {
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, &code);
         for diagnostic in diagnostics {
             match cli.format {
                 OutputFormat::Pretty => {

@@ -42,11 +42,10 @@ impl Rule11a {
 }
 
 impl Rule for Rule11a {
-    fn check(&self, _tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, _tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
-        let lines =
-            LinesWithPosition::from(std::str::from_utf8(code).expect("Code is not valid UTF-8"));
+        let lines = LinesWithPosition::from(code);
         for (line, start_pos) in lines {
             // Get just the part of the line which consists of indentation
             let indentation = &line[..(line.len() - line.trim_start().len())];
@@ -128,7 +127,7 @@ mod tests {
     fn all_tabs() {
         let code = "#include <stdio.h>\nint main() {\n\t\tprintf(\"Hello, world!\\n\");\n\t\treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
     }
@@ -138,7 +137,7 @@ mod tests {
     fn mix_tabs_spaces() {
         let code = "#include <stdio.h>\nint main() {\n  \tprintf(\"Hello, world!\\n\");\n  \treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
         assert!(diagnostics.iter().all(|diag| diag.notes.len() == 1));
@@ -150,7 +149,7 @@ mod tests {
         let code =
             "#include <stdio.h>\nint main() {\n  printf(\"Hello, world!\\n\");\n  return 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert!(diagnostics.is_empty());
     }
 }

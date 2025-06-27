@@ -29,10 +29,9 @@ use crate::{helpers::LinesWithPosition, rules::api::Rule};
 pub struct Rule03e {}
 
 impl Rule for Rule03e {
-    fn check(&self, _tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, _tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
-        let code_str = std::str::from_utf8(code).expect("Code is not valid UTF-8");
-        for (line, index) in LinesWithPosition::from(code_str) {
+        for (line, index) in LinesWithPosition::from(code) {
             let trimmed_line = line.trim_end();
             if trimmed_line.len() != line.len() {
                 // Start/end of trailing whitespace
@@ -67,7 +66,7 @@ mod tests {
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code, None).unwrap();
         let rule = Rule03e {};
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, code);
         assert_eq!(2, diagnostics.len());
     }
 }

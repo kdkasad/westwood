@@ -46,7 +46,7 @@ use crate::rules::api::Rule;
 pub struct Rule01b {}
 
 impl Rule for Rule01b {
-    fn check(&self, _tree: &Tree, _code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, _tree: &Tree, _code: &str) -> Vec<Diagnostic<()>> {
         Vec::with_capacity(0)
     }
 }

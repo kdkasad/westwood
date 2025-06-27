@@ -64,7 +64,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule01d {}
 
 impl Rule for Rule01d {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut first_function_position = None;
         let mut diagnostics = Vec::new();
@@ -90,10 +90,7 @@ impl Rule for Rule01d {
                                 .with_message("Variable declared here"),
                         )
                         .with_label(Label::secondary((), capture.node.byte_range()).with_message(
-                            format!(
-                                "Perhaps you meant `g_{}'",
-                                capture.node.utf8_text(code).expect("Code is not valid UTF-8")
-                            ),
+                            format!("Perhaps you meant `g_{}'", &code[capture.node.byte_range()]),
                         ))
                 }
                 "declaration.top_level" => {

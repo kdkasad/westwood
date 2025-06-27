@@ -106,11 +106,10 @@ const QUERY_STR: &str = indoc! { /* query */ r##"
 "## };
 
 impl Rule for Rule02a {
-    fn check(&self, tree: &Tree, code_bytes: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Check for lines >80 columns long
-        let code = std::str::from_utf8(code_bytes).expect("Code is not valid UTF-8");
         for (line, index) in LinesWithPosition::from(code) {
             let width = line_width(line);
             if width > 80 {
@@ -122,7 +121,7 @@ impl Rule for Rule02a {
             }
         }
 
-        let helper = QueryHelper::new(QUERY_STR, tree, code_bytes);
+        let helper = QueryHelper::new(QUERY_STR, tree, code);
         let splittable_capture_i = helper.expect_index_for_capture("splittable");
         let splittable_begin_capture_i = helper.expect_index_for_capture("splittable.begin");
         let splittable_end_capture_i = helper.expect_index_for_capture("splittable.end");
@@ -157,9 +156,7 @@ impl Rule for Rule02a {
             }
 
             // Check indentation of wrapped lines and construct list of labels
-            let mut code_lines = LinesWithPosition::from(
-                std::str::from_utf8(code_bytes).expect("Code is not valid UTF-8"),
-            )
+            let mut code_lines = LinesWithPosition::from(code)
             .skip(range.start_point.row)
             .take(range.end_point.row + 1 - range.start_point.row);
             let (first_line, first_line_byte_pos) = code_lines.next().unwrap();
@@ -337,7 +334,7 @@ mod tests {
                 code.push_str("}\n");
                 dbg!(&code);
                 let tree = parser.parse(code.as_bytes(), None).unwrap();
-                let diagnostics = rule.check(&tree, code.as_bytes());
+                let diagnostics = rule.check(&tree, &code);
                 assert_eq!($ndiag, diagnostics.len());
                 let nlabels_list: &[usize] = &$nlabels_list;
                 assert_eq!(

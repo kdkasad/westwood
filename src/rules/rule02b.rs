@@ -53,7 +53,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule02b {}
 
 impl Rule for Rule02b {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|label: &str, capture: QueryCapture| match label {
@@ -110,7 +110,7 @@ mod tests {
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule02b = Rule02b {};
         assert_eq!(
-            rule02b.check(&tree, code.as_bytes()),
+            rule02b.check(&tree, &code),
             vec![Diagnostic::warning()
                 .with_code("II:B")
                 .with_message(format!(

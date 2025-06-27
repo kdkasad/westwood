@@ -38,7 +38,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule11e {}
 
 impl Rule for Rule11e {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         helper.for_each_capture(|label, capture| {

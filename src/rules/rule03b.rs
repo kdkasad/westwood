@@ -95,7 +95,7 @@ const QUERY_STR_FIELD: &str = indoc! {
 pub struct Rule03b {}
 
 impl Rule for Rule03b {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Binary expressions
@@ -180,7 +180,7 @@ fn check_binary_op_spacing(
     op: Node,
     left: Node,
     right: Node,
-    code: &[u8],
+    code: &str,
 ) -> Option<Diagnostic<()>> {
     // If the adjacent items are on the same line, check that there's a single space between them.
     // If they're on separate lines, we do nothing, and leave it to Rule II:A to check the
@@ -243,9 +243,8 @@ fn check_field_op_spacing(op: Node, left: Node, right: Node) -> Option<Diagnosti
 }
 
 /// Returns `true` if there is a single space separating the two nodes, else `false`.
-fn is_single_space_between(left: Node, right: Node, code: &[u8]) -> bool {
-    // TODO: Support UTF-8, not just bytes
-    left.end_byte() + 1 == right.start_byte() && code[left.end_byte()] as char == ' '
+fn is_single_space_between(left: Node, right: Node, code: &str) -> bool {
+    left.end_byte() + 1 == right.start_byte() && code.as_bytes()[left.end_byte()] == b' '
 }
 
 #[cfg(test)]
