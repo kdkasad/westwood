@@ -73,7 +73,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03d {}
 
 impl Rule for Rule03d {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         // List of function definition bodies
         let mut function_bodies: Vec<Node> = Vec::new();
         // List of #define statements
@@ -150,9 +150,7 @@ impl Rule for Rule03d {
         }
 
         // Get lines of the source
-        let lines: Vec<(&str, usize)> =
-            LinesWithPosition::from(std::str::from_utf8(code).expect("Code is not valid UTF-8"))
-                .collect();
+        let lines: Vec<(&str, usize)> = LinesWithPosition::from(code).collect();
 
         // Collapse #define statements into groups
         let define_groups = RangeCollapser::from(definitions.into_iter().map(|def| def.range()));
@@ -290,8 +288,8 @@ impl Rule for Rule03d {
 
 /// Returns the byte range of a [Node], excluding the trailing end-of-line sequence if it was
 /// included in the node's range.
-fn range_without_trailing_eol(mut range: Range<usize>, code: &[u8]) -> Range<usize> {
-    match &code[(range.end - 2)..range.end] {
+fn range_without_trailing_eol(mut range: Range<usize>, code: &str) -> Range<usize> {
+    match &code.as_bytes()[(range.end - 2)..range.end] {
         [b'\r', b'\n'] => range.end -= 2,
         [_, b'\n'] => range.end -= 1,
         _ => (),
@@ -327,7 +325,7 @@ mod tests {
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, code);
         // Expect 1 diagnostic for the whole group.
         assert_eq!(1, diagnostics.len());
     }
@@ -341,7 +339,7 @@ mod tests {
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, code);
         assert_eq!(1, diagnostics.len());
         assert_eq!(code.lines().last().unwrap(), &code[diagnostics[0].labels[0].range.clone()]);
     }
@@ -355,7 +353,7 @@ mod tests {
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, code);
         assert!(diagnostics.is_empty());
     }
 
@@ -368,7 +366,7 @@ mod tests {
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code.as_bytes());
+        let diagnostics = rule.check(&tree, code);
         // Sanity checks
         assert_eq!(1, diagnostics.len());
         assert_eq!(LabelStyle::Primary, diagnostics[0].labels[0].style);

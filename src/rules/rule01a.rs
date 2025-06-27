@@ -65,7 +65,7 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 pub struct Rule01a {}
 
 impl Rule for Rule01a {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|_label, capture| {
@@ -86,9 +86,7 @@ impl Rule for Rule01a {
                 )
                 .with_label(Label::secondary((), capture.node.byte_range()).with_message(format!(
                     "Perhaps you meant `{}'",
-                    guess_lower_snake_case(
-                        capture.node.utf8_text(code).expect("Code is not valid UTF-8")
-                    )
+                    guess_lower_snake_case(&code[capture.node.byte_range()])
                 )));
             diagnostics.push(diagnostic);
         });

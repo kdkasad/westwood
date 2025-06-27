@@ -88,7 +88,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03a {}
 
 impl Rule for Rule03a {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Part 1: Space between parentheses and braces
@@ -119,10 +119,7 @@ impl Rule for Rule03a {
             // Check spacing between keyword and (
             let keyword = helper.expect_node_for_capture_index(qmatch, keyword_capture_i);
             let lparen = helper.expect_node_for_capture_index(qmatch, lparen_capture_i);
-            let message = format!(
-                "Expected a single space after `{}'",
-                keyword.utf8_text(code).expect("Code is not valid UTF-8")
-            );
+            let message = format!("Expected a single space after `{code}'");
             if let Some(diagnostic) = check_single_space_between(keyword, lparen, code, &message) {
                 diagnostics.push(diagnostic);
             }
@@ -137,13 +134,12 @@ impl Rule for Rule03a {
 fn check_single_space_between(
     left: Node,
     right: Node,
-    code: &[u8],
+    code: &str,
     message: &str,
 ) -> Option<Diagnostic<()>> {
     if (left.end_byte() + 1) == right.start_byte() {
         // One byte in between
-        // TODO: Support multi-byte UTF-8 characters here, not just bytes
-        if (code[left.end_byte()] as char) == ' ' {
+        if code.as_bytes()[left.end_byte()] == b' ' {
             // Valid
             return None;
         }

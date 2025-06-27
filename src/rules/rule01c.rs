@@ -66,11 +66,11 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 pub struct Rule01c {}
 
 impl Rule for Rule01c {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
-            let node_text = capture.node.utf8_text(code).expect("Code is not valid UTF-8");
+            let node_text = &code[capture.node.byte_range()];
             let (message, label, fix) = match name {
                 "constant.name.short" => (
                     "Constant name must contain at least 2 characters",

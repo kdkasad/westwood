@@ -62,7 +62,7 @@ const QUERY_STR: &str = indoc! {
 };
 
 impl Rule for Rule12a {
-    fn check(&self, tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         let helper = QueryHelper::new(QUERY_STR, tree, code);
@@ -168,8 +168,7 @@ mod tests {
 
         // Check positives
         let tree = parser.parse(function_declarations.as_bytes(), None).unwrap();
-        let helper =
-            QueryHelper::new("(declaration) @declaration", &tree, function_declarations.as_bytes());
+        let helper = QueryHelper::new("(declaration) @declaration", &tree, function_declarations);
         helper.for_each_capture(|label, capture| {
             assert_eq!("declaration", label);
             println!("matched {}", &function_declarations[capture.node.byte_range()]);
@@ -178,11 +177,8 @@ mod tests {
 
         // Check negatives
         let tree = parser.parse(non_function_declarations.as_bytes(), None).unwrap();
-        let helper = QueryHelper::new(
-            "(declaration) @declaration",
-            &tree,
-            non_function_declarations.as_bytes(),
-        );
+        let helper =
+            QueryHelper::new("(declaration) @declaration", &tree, non_function_declarations);
         helper.for_each_capture(|label, capture| {
             assert_eq!("declaration", label);
             println!("matched {}", &non_function_declarations[capture.node.byte_range()]);

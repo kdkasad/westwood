@@ -113,7 +113,7 @@ pub fn test_captures(query: &str, input: &str) -> ExitCode {
     let mut parser = Parser::new();
     parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
     let tree = parser.parse(&code, None).unwrap();
-    let helper = QueryHelper::new(query, &tree, code.as_bytes());
+    let helper = QueryHelper::new(query, &tree, &code);
     let mut failed = false;
     helper.for_each_capture(|label, capture| {
         let start = capture.node.start_position();

@@ -50,10 +50,14 @@ impl<'src> QueryHelper<'src> {
     ///
     /// Panics if Tree-sitter fails to parse the query.
     #[must_use]
-    pub fn new(query_src: &str, tree: &'src Tree, code: &'src [u8]) -> Self {
+    pub fn new(query_src: &str, tree: &'src Tree, code: &'src str) -> Self {
         let query =
             Query::new(&tree_sitter_c::LANGUAGE.into(), query_src).expect("Failed to parse query");
-        Self { query, tree, code }
+        Self {
+            query,
+            tree,
+            code: code.as_bytes(),
+        }
     }
 
     /// Returns a reference to this helper's query.
@@ -222,7 +226,7 @@ impl<'src> QueryHelper<'src> {
 /// - the node's text is not valid UTF-8
 ///
 #[must_use]
-pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code str {
+pub fn function_definition_name<'code>(node: Node, code: &'code str) -> &'code str {
     assert_eq!(
         "function_definition",
         node.kind(),
@@ -235,7 +239,7 @@ pub fn function_definition_name<'code>(node: Node, code: &'code [u8]) -> &'code 
             .child_by_field_name("declarator")
             .expect("Expected node to have a `declarator' field");
     }
-    node.utf8_text(code).expect("Code is not valid UTF-8")
+    &code[node.byte_range()]
 }
 
 /// Gets the number of columns by which this line is indented. Tab characters (U+0009 or `'\t'`)
@@ -434,14 +438,10 @@ mod test {
             let mut parser = Parser::new();
             parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
             let tree = parser.parse(code.as_bytes(), None).unwrap();
-            let helper =
-                QueryHelper::new("(function_definition) @function", &tree, code.as_bytes());
+            let helper = QueryHelper::new("(function_definition) @function", &tree, code);
             helper.for_each_capture(|label, capture| {
                 assert_eq!("function", label);
-                assert_eq!(
-                    expected_name,
-                    super::function_definition_name(capture.node, code.as_bytes())
-                );
+                assert_eq!(expected_name, super::function_definition_name(capture.node, code));
             });
         }
     }
@@ -478,7 +478,7 @@ mod test {
         let mut parser = Parser::new();
         parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
         let tree = parser.parse(code.as_bytes(), None).unwrap();
-        let helper = QueryHelper::new("(preproc_def) @define", &tree, code.as_bytes());
+        let helper = QueryHelper::new("(preproc_def) @define", &tree, code);
         helper.for_each_capture(|_label, capture| ranges.push(capture.node.range()));
         let mut collapser = RangeCollapser::from(ranges.clone());
         let group1 = collapser.next().unwrap();

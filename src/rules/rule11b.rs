@@ -44,14 +44,13 @@ impl Rule11b {
 }
 
 impl Rule for Rule11b {
-    fn check(&self, _tree: &Tree, code: &[u8]) -> Vec<Diagnostic<()>> {
+    fn check(&self, _tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Search for DOS-style newlines
-        let code_str = std::str::from_utf8(code).expect("Code is not valid UTF-8");
         // Split on newlines, keeping track of the position within the source
         let mut next_line_start_pos = 0;
-        let mut dos_lines = code_str
+        let mut dos_lines = code
             .split('\n')
             .map(|line| {
                 let cur_line_start_pos = next_line_start_pos;
@@ -116,7 +115,7 @@ mod tests {
     fn has_crlf() {
         let code = "int main() {\r\n  return 0;\r\n}\r\n";
         let rule = super::Rule11b::new(None);
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert_eq!(3, diagnostics.len());
         let cr_positions: Vec<usize> = code
             .char_indices()
@@ -134,7 +133,7 @@ mod tests {
     fn no_crlf() {
         let code = "int main() {\n  return 0;\n}\n";
         let rule = super::Rule11b::new(None);
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert!(diagnostics.is_empty());
     }
 
@@ -143,7 +142,7 @@ mod tests {
     fn limit() {
         let code = "int main() {\r\n  return 0;\r\n}\r\n";
         let rule = super::Rule11b::new(Some(NonZeroUsize::new(1).unwrap()));
-        let diagnostics = rule.check(&parse(code), code.as_bytes());
+        let diagnostics = rule.check(&parse(code), code);
         assert_eq!(1, diagnostics.len());
         assert_eq!(2, diagnostics[0].notes.len());
         // First note is Vim tip; second is remaining warnings.
