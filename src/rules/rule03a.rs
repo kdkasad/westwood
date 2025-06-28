@@ -121,7 +121,8 @@ impl Rule for Rule03a {
             // Check spacing between keyword and (
             let keyword = helper.expect_node_for_capture_index(qmatch, keyword_capture_i);
             let lparen = helper.expect_node_for_capture_index(qmatch, lparen_capture_i);
-            let message = format!("Expected a single space after `{code}'");
+            let message =
+                format!("Expected a single space after `{}'", &code[keyword.byte_range()]);
             if let Some(diagnostic) = check_single_space_between(keyword, lparen, code, &message) {
                 diagnostics.push(diagnostic);
             }
