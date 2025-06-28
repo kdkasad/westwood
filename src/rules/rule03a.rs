@@ -26,9 +26,11 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Node, Tree};
+use tree_sitter::Node;
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
+
+use crate::rules::api::SourceInfo;
 
 /// Tree-sitter query for Rule III:A.
 const QUERY_STR: &str = indoc! {
@@ -88,7 +90,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03a {}
 
 impl Rule for Rule03a {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Part 1: Space between parentheses and braces

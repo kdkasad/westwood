@@ -32,9 +32,11 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Node, Tree};
+use tree_sitter::Node;
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
+
+use crate::rules::api::SourceInfo;
 
 /// Tree-sitter query to capture binary expressions/operators.
 const QUERY_STR_BINARY: &str = indoc! {
@@ -95,7 +97,7 @@ const QUERY_STR_FIELD: &str = indoc! {
 pub struct Rule03b {}
 
 impl Rule for Rule03b {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Binary expressions

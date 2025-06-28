@@ -27,12 +27,14 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{QueryCapture, Tree};
+use tree_sitter::QueryCapture;
 
 use crate::{
     helpers::{function_definition_name, QueryHelper},
     rules::api::Rule,
 };
+
+use crate::rules::api::SourceInfo;
 
 /// Number of lines per page
 const PAGE_SIZE: usize = 61;
@@ -53,7 +55,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule02b {}
 
 impl Rule for Rule02b {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|label: &str, capture: QueryCapture| match label {
@@ -86,11 +88,10 @@ impl Rule for Rule02b {
 
 #[cfg(test)]
 mod tests {
-    use crate::rules::api::Rule;
+    use crate::rules::api::{Rule, SourceInfo};
 
     use codespan_reporting::diagnostic::{Diagnostic, Label};
     use pretty_assertions::assert_eq;
-    use tree_sitter::Parser;
 
     use super::{Rule02b, MAX_PAGES_PER_FUNCTION, PAGE_SIZE};
 
@@ -105,12 +106,10 @@ mod tests {
         code.push_str("}\n");
 
         // Test for diagnostic
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule02b = Rule02b {};
+        let source = SourceInfo::new(&code);
         assert_eq!(
-            rule02b.check(&tree, &code),
+            rule02b.check(&source),
             vec![Diagnostic::warning()
                 .with_code("II:B")
                 .with_message(format!(

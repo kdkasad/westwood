@@ -35,13 +35,12 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Range, Tree};
+use tree_sitter::Range;
 use unicode_width::UnicodeWidthStr;
 
-use crate::{
-    helpers::{LinesWithPosition, QueryHelper},
-    rules::api::Rule,
-};
+use crate::{helpers::QueryHelper, rules::api::Rule};
+
+use crate::rules::api::SourceInfo;
 
 /// Amount that wrapped lines must be indented, in columns.
 const WRAPPED_LINE_INDENT_WIDTH: usize = 2;
@@ -106,11 +105,11 @@ const QUERY_STR: &str = indoc! { /* query */ r##"
 "## };
 
 impl Rule for Rule02a {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         // Check for lines >80 columns long
-        for (line, index) in LinesWithPosition::from(code) {
+        for (line, index) in lines {
             let width = line_width(line);
             if width > 80 {
                 let diagnostic = Diagnostic::warning()
@@ -156,15 +155,15 @@ impl Rule for Rule02a {
             }
 
             // Check indentation of wrapped lines and construct list of labels
-            let mut code_lines = LinesWithPosition::from(code)
+            let mut code_lines = lines.iter()
             .skip(range.start_point.row)
             .take(range.end_point.row + 1 - range.start_point.row);
-            let (first_line, first_line_byte_pos) = code_lines.next().unwrap();
+            let &(first_line, first_line_byte_pos) = code_lines.next().unwrap();
             let first_line_indent = get_indentation(first_line);
             let first_line_indent_width = line_width(first_line_indent);
             let expected_indent_width = first_line_indent_width + WRAPPED_LINE_INDENT_WIDTH;
             let mut labels = Vec::new();
-            for (this_line, this_line_pos) in &mut code_lines {
+            for &(this_line, this_line_pos) in &mut code_lines {
                 let this_line_indent = get_indentation(this_line);
                 let this_line_indent_width = line_width(this_line_indent);
                 if this_line_indent_width < expected_indent_width {
@@ -224,9 +223,11 @@ mod tests {
 
     use indoc::indoc;
     use pretty_assertions::assert_eq;
-    use tree_sitter::Parser;
 
-    use crate::{helpers::testing::test_captures, rules::api::Rule};
+    use crate::{
+        helpers::testing::test_captures,
+        rules::api::{Rule, SourceInfo},
+    };
 
     use super::{Rule02a, QUERY_STR};
 
@@ -318,8 +319,6 @@ mod tests {
     #[test]
     fn test_rule02a_diagnostics() {
         let rule = Rule02a {};
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
 
         macro_rules! test {
             ($code:literal, $ndiag:expr, $nlabels_list:expr) => {
@@ -333,8 +332,8 @@ mod tests {
                 }
                 code.push_str("}\n");
                 dbg!(&code);
-                let tree = parser.parse(code.as_bytes(), None).unwrap();
-                let diagnostics = rule.check(&tree, &code);
+                let source = SourceInfo::new(&code);
+                let diagnostics = rule.check(&source);
                 assert_eq!($ndiag, diagnostics.len());
                 let nlabels_list: &[usize] = &$nlabels_list;
                 assert_eq!(

@@ -36,9 +36,8 @@
 //! - Make this rule produce a table of all declared identifiers at the end of parsing.
 
 use codespan_reporting::diagnostic::Diagnostic;
-use tree_sitter::Tree;
 
-use crate::rules::api::Rule;
+use crate::rules::api::{Rule, SourceInfo};
 
 /// # Rule I:B.
 ///
@@ -46,7 +45,7 @@ use crate::rules::api::Rule;
 pub struct Rule01b {}
 
 impl Rule for Rule01b {
-    fn check(&self, _tree: &Tree, _code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, _: &SourceInfo) -> Vec<Diagnostic<()>> {
         Vec::with_capacity(0)
     }
 }
