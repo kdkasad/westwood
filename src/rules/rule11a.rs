@@ -19,9 +19,10 @@
 //! ```
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use tree_sitter::Tree;
 
-use crate::{helpers::LinesWithPosition, rules::api::Rule};
+use crate::rules::api::Rule;
+
+use crate::rules::api::SourceInfo;
 
 /// # Rule XI:A.
 ///
@@ -42,11 +43,10 @@ impl Rule11a {
 }
 
 impl Rule for Rule11a {
-    fn check(&self, _tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { lines, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
-        let lines = LinesWithPosition::from(code);
-        for (line, start_pos) in lines {
+        for &(line, start_pos) in lines {
             // Get just the part of the line which consists of indentation
             let indentation = &line[..(line.len() - line.trim_start().len())];
             if indentation.is_empty() {
@@ -111,23 +111,15 @@ mod tests {
     // encapsulated in the query.
 
     use pretty_assertions::assert_eq;
-    use tree_sitter::{Parser, Tree};
 
-    use crate::rules::api::Rule;
-
-    /// Returns a [Tree] for the given C code.
-    fn parse(code: &str) -> Tree {
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        parser.parse(code.as_bytes(), None).unwrap()
-    }
+    use crate::rules::api::{Rule, SourceInfo};
 
     /// Tests when lines contain only tabs for indentation.
     #[test]
     fn all_tabs() {
         let code = "#include <stdio.h>\nint main() {\n\t\tprintf(\"Hello, world!\\n\");\n\t\treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code);
+        let diagnostics = rule.check(&SourceInfo::new(code));
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
     }
@@ -137,7 +129,7 @@ mod tests {
     fn mix_tabs_spaces() {
         let code = "#include <stdio.h>\nint main() {\n  \tprintf(\"Hello, world!\\n\");\n  \treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code);
+        let diagnostics = rule.check(&SourceInfo::new(code));
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
         assert!(diagnostics.iter().all(|diag| diag.notes.len() == 1));
@@ -149,7 +141,7 @@ mod tests {
         let code =
             "#include <stdio.h>\nint main() {\n  printf(\"Hello, world!\\n\");\n  return 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&parse(code), code);
+        let diagnostics = rule.check(&SourceInfo::new(code));
         assert!(diagnostics.is_empty());
     }
 }

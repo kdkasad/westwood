@@ -17,6 +17,26 @@
 use codespan_reporting::diagnostic::Diagnostic;
 use tree_sitter::Tree;
 
+use crate::helpers::LinesWithPosition;
+
+pub struct SourceInfo<'src> {
+    pub tree: Tree,
+    pub code: &'src str,
+    pub lines: Box<[(&'src str, usize)]>,
+}
+
+impl<'src> SourceInfo<'src> {
+    pub fn new(code: &'src str) -> Self {
+        let mut parser = tree_sitter::Parser::new();
+        parser
+            .set_language(&tree_sitter_c::LANGUAGE.into())
+            .expect("Failed to set language");
+        let tree = parser.parse(code, None).expect("Failed to parse code");
+        let lines = LinesWithPosition::from(code).collect();
+        Self { tree, code, lines }
+    }
+}
+
 /// Represents a linter rule.
 pub trait Rule {
     /// Checks a source file for compliance with this rule.
@@ -27,5 +47,5 @@ pub trait Rule {
     /// - `tree`: [`Tree`] representing the file.
     /// - `code`: Text/code of the given file.
     #[must_use]
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>>;
+    fn check(&self, source: &SourceInfo) -> Vec<Diagnostic<()>>;
 }

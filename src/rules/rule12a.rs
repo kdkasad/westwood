@@ -31,9 +31,11 @@
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Node, Tree};
+use tree_sitter::Node;
 
 use crate::{helpers::QueryHelper, rules::api::Rule};
+
+use crate::rules::api::SourceInfo;
 
 /// # Rule XII:A.
 ///
@@ -62,7 +64,7 @@ const QUERY_STR: &str = indoc! {
 };
 
 impl Rule for Rule12a {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
         let helper = QueryHelper::new(QUERY_STR, tree, code);

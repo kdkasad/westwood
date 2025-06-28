@@ -45,12 +45,14 @@ use std::ops::Range;
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
-use tree_sitter::{Node, Range as TSRange, Tree};
+use tree_sitter::{Node, Range as TSRange};
 
 use crate::{
-    helpers::{function_definition_name, LinesWithPosition, QueryHelper, RangeCollapser},
+    helpers::{function_definition_name, QueryHelper, RangeCollapser},
     rules::api::Rule,
 };
+
+use crate::rules::api::SourceInfo;
 
 /// Tree-sitter query for Rule III:D.
 const QUERY_STR: &str = indoc! {
@@ -73,7 +75,7 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03d {}
 
 impl Rule for Rule03d {
-    fn check(&self, tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
         // List of function definition bodies
         let mut function_bodies: Vec<Node> = Vec::new();
         // List of #define statements
@@ -148,9 +150,6 @@ impl Rule for Rule03d {
                     )),
             );
         }
-
-        // Get lines of the source
-        let lines: Vec<(&str, usize)> = LinesWithPosition::from(code).collect();
 
         // Collapse #define statements into groups
         let define_groups = RangeCollapser::from(definitions.into_iter().map(|def| def.range()));
@@ -304,9 +303,8 @@ mod tests {
 
     use codespan_reporting::diagnostic::LabelStyle;
     use indoc::indoc;
-    use tree_sitter::Parser;
 
-    use crate::rules::api::Rule;
+    use crate::rules::api::{Rule, SourceInfo};
 
     use super::Rule03d;
 
@@ -321,11 +319,9 @@ mod tests {
             // comment
             "
         };
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code);
+        let source = SourceInfo::new(code);
+        let diagnostics = rule.check(&source);
         // Expect 1 diagnostic for the whole group.
         assert_eq!(1, diagnostics.len());
     }
@@ -335,11 +331,9 @@ mod tests {
     #[test]
     fn no_eol() {
         let code = "// comment\n#define A";
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code.as_bytes(), None).unwrap();
+        let source = SourceInfo::new(code);
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code);
+        let diagnostics = rule.check(&source);
         assert_eq!(1, diagnostics.len());
         assert_eq!(code.lines().last().unwrap(), &code[diagnostics[0].labels[0].range.clone()]);
     }
@@ -349,11 +343,9 @@ mod tests {
     #[test]
     fn file_start_end() {
         let code = "#define A\n";
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code.as_bytes(), None).unwrap();
+        let source = SourceInfo::new(code);
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code);
+        let diagnostics = rule.check(&source);
         assert!(diagnostics.is_empty());
     }
 
@@ -362,11 +354,9 @@ mod tests {
     #[test]
     fn crlf() {
         let code = "/* comment */\r\n#define A 1\r\n";
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code.as_bytes(), None).unwrap();
         let rule = Rule03d {};
-        let diagnostics = rule.check(&tree, code);
+        let source = SourceInfo::new(code);
+        let diagnostics = rule.check(&source);
         // Sanity checks
         assert_eq!(1, diagnostics.len());
         assert_eq!(LabelStyle::Primary, diagnostics[0].labels[0].style);

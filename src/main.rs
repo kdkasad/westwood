@@ -34,6 +34,7 @@ use codespan_reporting::{
     },
 };
 use crashlog::cargo_metadata;
+use rules::api::SourceInfo;
 use tree_sitter::{Parser, Tree};
 
 pub mod helpers;
@@ -145,8 +146,9 @@ fn main() -> ExitCode {
 
     // Do checks
     let rules: Vec<Box<dyn Rule>> = crate::rules::get_rules();
+    let source = SourceInfo::new(&code);
     for rule in rules {
-        let diagnostics = rule.check(&tree, &code);
+        let diagnostics = rule.check(&source);
         for diagnostic in diagnostics {
             match cli.format {
                 OutputFormat::Pretty => {

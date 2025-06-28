@@ -19,9 +19,10 @@
 //! ```
 
 use codespan_reporting::diagnostic::{Diagnostic, Label};
-use tree_sitter::Tree;
 
-use crate::{helpers::LinesWithPosition, rules::api::Rule};
+use crate::rules::api::Rule;
+
+use crate::rules::api::SourceInfo;
 
 /// # Rule III:E.
 ///
@@ -29,9 +30,9 @@ use crate::{helpers::LinesWithPosition, rules::api::Rule};
 pub struct Rule03e {}
 
 impl Rule for Rule03e {
-    fn check(&self, _tree: &Tree, code: &str) -> Vec<Diagnostic<()>> {
+    fn check(&self, SourceInfo { lines, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
-        for (line, index) in LinesWithPosition::from(code) {
+        for (line, index) in lines {
             let trimmed_line = line.trim_end();
             if trimmed_line.len() != line.len() {
                 // Start/end of trailing whitespace
@@ -51,9 +52,7 @@ impl Rule for Rule03e {
 
 #[cfg(test)]
 mod tests {
-    use tree_sitter::Parser;
-
-    use crate::rules::api::Rule;
+    use crate::rules::api::{Rule, SourceInfo};
 
     use super::Rule03e;
 
@@ -62,11 +61,9 @@ mod tests {
     #[test]
     fn rule03e() {
         let code = "int main() { \n  return 0;\t\n}\n";
-        let mut parser = Parser::new();
-        parser.set_language(&tree_sitter_c::LANGUAGE.into()).unwrap();
-        let tree = parser.parse(code, None).unwrap();
+        let source = SourceInfo::new(code);
         let rule = Rule03e {};
-        let diagnostics = rule.check(&tree, code);
+        let diagnostics = rule.check(&source);
         assert_eq!(2, diagnostics.len());
     }
 }
