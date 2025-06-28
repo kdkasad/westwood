@@ -42,6 +42,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Amount that wrapped lines must be indented, in columns.
 const WRAPPED_LINE_INDENT_WIDTH: usize = 2;
 
@@ -105,6 +107,16 @@ const QUERY_STR: &str = indoc! { /* query */ r##"
 "## };
 
 impl Rule for Rule02a {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 2,
+            letter: 'A',
+            code: "II:A",
+            name: "LineLength",
+            description: "lines must be 80 columns wide or less",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

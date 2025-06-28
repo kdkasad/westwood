@@ -54,6 +54,8 @@ use crate::{
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule III:D.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -75,6 +77,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03d {}
 
 impl Rule for Rule03d {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'D',
+            code: "III:D",
+            name: "PreprocessorDefinitionLocationSpacing",
+            description: "#defines must be grouped together between blank lines",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
         // List of function definition bodies
         let mut function_bodies: Vec<Node> = Vec::new();

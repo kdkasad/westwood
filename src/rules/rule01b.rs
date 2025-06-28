@@ -37,7 +37,7 @@
 
 use codespan_reporting::diagnostic::Diagnostic;
 
-use crate::rules::api::{Rule, SourceInfo};
+use crate::rules::api::{Rule, RuleDescription, SourceInfo};
 
 /// # Rule I:B.
 ///
@@ -45,6 +45,16 @@ use crate::rules::api::{Rule, SourceInfo};
 pub struct Rule01b {}
 
 impl Rule for Rule01b {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 1,
+            letter: 'B',
+            code: "I:B",
+            name: "MeaningfulNames",
+            description: "variable names must be descriptive and meaningful",
+        }
+    }
+
     fn check(&self, _: &SourceInfo) -> Vec<Diagnostic<()>> {
         Vec::with_capacity(0)
     }

@@ -46,6 +46,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule I:C.
 const QUERY_STR: &str = indoc! { /* query */ r#"
     (
@@ -68,6 +70,16 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 pub struct Rule01c {}
 
 impl Rule for Rule01c {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 1,
+            letter: 'C',
+            code: "I:C",
+            name: "ConstantNaming",
+            description: "constants must use upper snake case and be >=2 characters",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();

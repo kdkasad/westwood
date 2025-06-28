@@ -39,6 +39,8 @@ use crate::{
     rules::api::{Rule, SourceInfo},
 };
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule I:D.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -67,6 +69,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule01d {}
 
 impl Rule for Rule01d {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 1,
+            letter: 'D',
+            code: "I:D",
+            name: "GlobalVariableNamingAndOrder",
+            description: "global variables must be prefixed with `g_` and global declarations must come before function definitions",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut first_function_position = None;

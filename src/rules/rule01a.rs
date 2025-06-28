@@ -37,6 +37,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 const QUERY_STR: &str = indoc! { /* query */ r#"
     (
         [
@@ -66,6 +68,16 @@ const QUERY_STR: &str = indoc! { /* query */ r#"
 pub struct Rule01a {}
 
 impl Rule for Rule01a {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 1,
+            letter: 'A',
+            code: "I:A",
+            name: "LowerSnakeCaseNames",
+            description: "names must be in lower snake case",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();

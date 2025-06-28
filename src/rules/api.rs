@@ -19,6 +19,7 @@ use tree_sitter::Tree;
 
 use crate::helpers::LinesWithPosition;
 
+#[derive(Debug, Clone)]
 pub struct SourceInfo<'src> {
     pub tree: Tree,
     pub code: &'src str,
@@ -37,6 +38,44 @@ impl<'src> SourceInfo<'src> {
     }
 }
 
+/// Describes a linter rule. Used for adding metadata about the rule to a diagnostic.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct RuleDescription {
+    /// Number of the group this rule belongs to.
+    pub group_number: u8,
+    /// Letter of the rule within its group.
+    pub letter: char,
+    /// Rule code (e.g. `"III:F"`).
+    pub code: &'static str,
+    /// Name of the rule in Pascal case (e.g. `"MeaningfulNames"`).
+    pub name: &'static str,
+    /// Description of the rule, ideally in the form "X must (be) Y".
+    pub description: &'static str,
+}
+
+impl Ord for RuleDescription {
+    /// Compares two rule descriptions based on their group number and letter.
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        let self_index = (self.group_number, self.letter);
+        let other_index = (other.group_number, other.letter);
+        self_index.cmp(&other_index)
+    }
+}
+
+impl PartialOrd for RuleDescription {
+    /// Defers to [`RuleDescription::cmp()`].
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<R: Rule> From<&R> for &'static RuleDescription {
+    /// Converts a [rule][Rule] into its [description][RuleDescription].
+    fn from(rule: &R) -> &'static RuleDescription {
+        rule.describe()
+    }
+}
+
 /// Represents a linter rule.
 pub trait Rule {
     /// Checks a source file for compliance with this rule.
@@ -48,4 +87,7 @@ pub trait Rule {
     /// - `code`: Text/code of the given file.
     #[must_use]
     fn check(&self, source: &SourceInfo) -> Vec<Diagnostic<()>>;
+
+    /// Returns a static description of the rule.
+    fn describe(&self) -> &'static RuleDescription;
 }

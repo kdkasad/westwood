@@ -38,6 +38,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query to capture binary expressions/operators.
 const QUERY_STR_BINARY: &str = indoc! {
     /* query */
@@ -97,6 +99,16 @@ const QUERY_STR_FIELD: &str = indoc! {
 pub struct Rule03b {}
 
 impl Rule for Rule03b {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'B',
+            code: "III:B",
+            name: "OperatorSpacing",
+            description: "operators must be spaced correctly",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

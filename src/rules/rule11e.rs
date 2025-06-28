@@ -25,6 +25,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule XI:E.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -39,6 +41,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule11e {}
 
 impl Rule for Rule11e {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 11,
+            letter: 'E',
+            code: "XI:E",
+            name: "NoGoto",
+            description: "do not use goto statements",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);

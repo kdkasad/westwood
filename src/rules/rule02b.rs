@@ -36,6 +36,8 @@ use crate::{
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Number of lines per page
 const PAGE_SIZE: usize = 61;
 /// Maximum number of pages a function definition may span
@@ -55,6 +57,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule02b {}
 
 impl Rule for Rule02b {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 2,
+            letter: 'B',
+            code: "II:B",
+            name: "FunctionLength",
+            description: "functions must be kept reasonably small",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();

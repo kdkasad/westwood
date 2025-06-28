@@ -24,12 +24,24 @@ use crate::rules::api::Rule;
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// # Rule III:E.
 ///
 /// See module-level documentation for details.
 pub struct Rule03e {}
 
 impl Rule for Rule03e {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'E',
+            code: "III:E",
+            name: "TrailingWhitespace",
+            description: "lines must not have trailing whitespace",
+        }
+    }
+
     fn check(&self, SourceInfo { lines, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         for (line, index) in lines {

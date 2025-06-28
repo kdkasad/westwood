@@ -26,6 +26,8 @@ use crate::rules::api::Rule;
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// # Rule XI:B.
 ///
 /// See module-level documentation for details.
@@ -45,6 +47,16 @@ impl Rule11b {
 }
 
 impl Rule for Rule11b {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 11,
+            letter: 'B',
+            code: "XI:B",
+            name: "NoCRLF",
+            description: "do not use DOS-style newlines (\\r\\n)",
+        }
+    }
+
     fn check(&self, SourceInfo { code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

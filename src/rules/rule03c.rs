@@ -30,6 +30,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule III:C.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -65,6 +67,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03c {}
 
 impl Rule for Rule03c {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'C',
+            code: "III:C",
+            name: "InternalCommasAndSemicolons",
+            description: "one space must be placed after internal semicolons and commas",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);

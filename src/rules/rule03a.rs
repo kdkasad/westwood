@@ -32,6 +32,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule III:A.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -90,6 +92,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03a {}
 
 impl Rule for Rule03a {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'A',
+            code: "III:A",
+            name: "FlowControlSpacing",
+            description: "one space must be placed between flow control constructs",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

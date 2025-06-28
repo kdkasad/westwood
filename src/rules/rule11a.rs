@@ -24,6 +24,8 @@ use crate::rules::api::Rule;
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// # Rule XI:A.
 ///
 /// See module-level documentation for details.
@@ -43,6 +45,16 @@ impl Rule11a {
 }
 
 impl Rule for Rule11a {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 11,
+            letter: 'A',
+            code: "XI:A",
+            name: "NoTabs",
+            description: "do not use tabs for indentation",
+        }
+    }
+
     fn check(&self, SourceInfo { lines, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
