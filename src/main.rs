@@ -12,22 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-use std::io::stdout;
-use std::io::IsTerminal;
-use std::process::ExitCode;
+use std::{
+    io::{stdout, IsTerminal},
+    process::ExitCode,
+};
 
-use crate::rules::api::Rule;
-use clap::crate_description;
-use clap::Parser as CliArgParser;
-use clap::ValueEnum;
+use clap::{crate_description, Parser as CliArgParser, ValueEnum};
 use clap_stdin::FileOrStdin;
-use codespan_reporting::diagnostic::Diagnostic;
-use codespan_reporting::diagnostic::Label;
-use codespan_reporting::diagnostic::LabelStyle;
-use codespan_reporting::diagnostic::Severity;
-use codespan_reporting::files::Files;
+use codespan_reporting::diagnostic::{Diagnostic, Label, LabelStyle, Severity};
 use codespan_reporting::{
-    files::SimpleFile,
+    files::{Files, SimpleFile},
     term::{
         self,
         termcolor::{ColorChoice, StandardStream},
@@ -46,14 +40,21 @@ const LONG_ABOUT: &str = concat!("Westwood: ", crate_description!());
 #[derive(CliArgParser, Debug)]
 #[command(version, about = None, long_about = LONG_ABOUT)]
 struct CliOptions {
-    #[arg(help = "File to lint, or `-' for standard input")]
+    /// File to lint, or `-` for standard input
+    #[arg()]
     file: FileOrStdin,
 
+    /// Format in which to print diagnostics
     #[arg(value_enum, short, long, default_value_t = OutputFormat::Pretty)]
     format: OutputFormat,
 
+    /// Whether to print colored output
     #[arg(value_enum, long, default_value_t = ColorMode::Auto)]
     color: ColorMode,
+
+    /// How to sort diagnostics before printing
+    #[arg(value_enum, long, default_value_t = OutputSort::Line)]
+    sort: OutputSort,
 }
 
 /// Format in which to print diagnostics
@@ -64,6 +65,16 @@ enum OutputFormat {
 
     /// Machine-parseable output
     Machine,
+}
+
+/// How to sort diagnostics
+#[derive(Copy, Clone, Debug, ValueEnum)]
+enum OutputSort {
+    /// Sort diagnostics by source line number
+    Line,
+
+    /// Sort diagnostics by code standard rule
+    Rule,
 }
 
 /// When to print colored output
@@ -145,18 +156,33 @@ fn main() -> ExitCode {
     let files = SimpleFile::new(filename, &code);
 
     // Do checks
-    let rules: Vec<Box<dyn Rule>> = crate::rules::get_rules();
     let source = SourceInfo::new(&code);
-    for rule in rules {
-        let diagnostics = rule.check(&source);
-        for diagnostic in diagnostics {
-            match cli.format {
-                OutputFormat::Pretty => {
-                    term::emit(&mut writer.lock(), &config, &files, &diagnostic)
-                        .expect("Failed to write diagnostic");
-                }
-                OutputFormat::Machine => print_machine_parseable(&files, &diagnostic),
+    let mut diagnostics: Vec<_> = crate::rules::get_rules()
+        .into_iter()
+        .flat_map(|rule| rule.check(&source))
+        .collect();
+
+    // Sort diagnostics
+    match cli.sort {
+        OutputSort::Line => diagnostics.sort_by_key(|d| {
+            d.labels
+                .iter()
+                .find(|label| label.style == LabelStyle::Primary)
+                .map_or(0, |label| label.range.start)
+        }),
+
+        // Don't need to do anything because the diagnostics are already sorted by rule
+        OutputSort::Rule => (),
+    }
+
+    // Print diagnostics
+    for diagnostic in diagnostics {
+        match cli.format {
+            OutputFormat::Pretty => {
+                term::emit(&mut writer.lock(), &config, &files, &diagnostic)
+                    .expect("Failed to write diagnostic");
             }
+            OutputFormat::Machine => print_machine_parseable(&files, &diagnostic),
         }
     }
 
