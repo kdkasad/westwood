@@ -35,9 +35,10 @@
 //!
 //! - Make this rule produce a table of all declared identifiers at the end of parsing.
 
-use codespan_reporting::diagnostic::Diagnostic;
-
-use crate::rules::api::{Rule, SourceInfo};
+use crate::{
+    diagnostic::Diagnostic,
+    rules::api::{Rule, RuleDescription, SourceInfo},
+};
 
 /// # Rule I:B.
 ///
@@ -45,7 +46,17 @@ use crate::rules::api::{Rule, SourceInfo};
 pub struct Rule01b {}
 
 impl Rule for Rule01b {
-    fn check(&self, _: &SourceInfo) -> Vec<Diagnostic<()>> {
-        Vec::with_capacity(0)
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 1,
+            letter: 'B',
+            code: "I:B",
+            name: "MeaningfulNames",
+            description: "variable names must be descriptive and meaningful",
+        }
+    }
+
+    fn check<'a>(&self, _: &'a SourceInfo) -> Vec<Diagnostic<'a>> {
+        Vec::new()
     }
 }

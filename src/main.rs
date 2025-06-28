@@ -31,6 +31,7 @@ use crashlog::cargo_metadata;
 use rules::api::SourceInfo;
 use tree_sitter::{Parser, Tree};
 
+pub mod diagnostic;
 pub mod helpers;
 pub mod rules;
 
@@ -156,7 +157,7 @@ fn main() -> ExitCode {
     let files = SimpleFile::new(filename, &code);
 
     // Do checks
-    let source = SourceInfo::new(&code);
+    let source = SourceInfo::new(&filename, &code);
     let mut diagnostics: Vec<_> = crate::rules::get_rules()
         .into_iter()
         .flat_map(|rule| rule.check(&source))

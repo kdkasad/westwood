@@ -25,16 +25,18 @@
 //!               the function into smaller functions.
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::QueryCapture;
 
 use crate::{
+    diagnostic::Diagnostic,
     helpers::{function_definition_name, QueryHelper},
     rules::api::Rule,
 };
 
 use crate::rules::api::SourceInfo;
+
+use super::api::RuleDescription;
 
 /// Number of lines per page
 const PAGE_SIZE: usize = 61;
@@ -55,7 +57,25 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule02b {}
 
 impl Rule for Rule02b {
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 2,
+            letter: 'B',
+            code: "II:B",
+            name: "FunctionLength",
+            description: "functions must be kept reasonably small",
+        }
+    }
+
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|label: &str, capture: QueryCapture| match label {
@@ -69,13 +89,15 @@ impl Rule for Rule02b {
                         MAX_PAGES_PER_FUNCTION,
                         MAX_PAGES_PER_FUNCTION * PAGE_SIZE
                     );
-                    let diagnostic =
-                        Diagnostic::warning().with_code("II:B").with_message(message).with_label(
-                            Label::primary((), capture.node.byte_range()).with_message(format!(
+                    let diagnostic = Diagnostic::new(self.describe(), message)
+                        .with_violation_parts(
+                            filename,
+                            capture.node.into(),
+                            format!(
                                 "Function `{}()' is {} lines long",
                                 function_definition_name(capture.node, code),
                                 length
-                            )),
+                            ),
                         );
                     diagnostics.push(diagnostic);
                 }
@@ -88,9 +110,11 @@ impl Rule for Rule02b {
 
 #[cfg(test)]
 mod tests {
-    use crate::rules::api::{Rule, SourceInfo};
+    use crate::{
+        diagnostic::Diagnostic,
+        rules::api::{Rule, SourceInfo},
+    };
 
-    use codespan_reporting::diagnostic::{Diagnostic, Label};
     use pretty_assertions::assert_eq;
 
     use super::{Rule02b, MAX_PAGES_PER_FUNCTION, PAGE_SIZE};
@@ -107,20 +131,29 @@ mod tests {
 
         // Test for diagnostic
         let rule02b = Rule02b {};
-        let source = SourceInfo::new(&code);
+        let source = SourceInfo::new("", &code);
         assert_eq!(
             rule02b.check(&source),
-            vec![Diagnostic::warning()
-                .with_code("II:B")
-                .with_message(format!(
+            vec![Diagnostic::new(
+                rule02b.describe(),
+                format!(
                     "Functions must fit on {} pages, i.e. be no longer than {} lines",
                     MAX_PAGES_PER_FUNCTION,
                     PAGE_SIZE * MAX_PAGES_PER_FUNCTION
-                ))
-                .with_label(Label::primary((), 0..(code.len() - 1)).with_message(format!(
+                )
+            )
+            .with_violation_parts(
+                "",
+                crate::diagnostic::SourceRange {
+                    bytes: 0..(code.len() - 1),
+                    start_pos: (0, 0),
+                    end_pos: (code.lines().count(), 0)
+                },
+                format!(
                     "Function `main()' is {} lines long",
                     2 + MAX_PAGES_PER_FUNCTION * PAGE_SIZE
-                )))]
+                )
+            )]
         );
     }
 }

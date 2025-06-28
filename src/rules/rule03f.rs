@@ -26,6 +26,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// Tree-sitter query for Rule III:F.
 const QUERY_STR: &str = indoc! {
     /* query */
@@ -48,6 +50,16 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03f {}
 
 impl Rule for Rule03f {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'F',
+            code: "III:F",
+            name: "NoSpaceBeforeParen",
+            description: "function calls must not have spaces",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);

@@ -30,13 +30,15 @@
 //!       Example: *value = head->data;
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::Node;
 
+use crate::diagnostic::{Diagnostic, SourceRange};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
+
+use super::api::RuleDescription;
 
 /// Tree-sitter query to capture binary expressions/operators.
 const QUERY_STR_BINARY: &str = indoc! {
@@ -97,7 +99,25 @@ const QUERY_STR_FIELD: &str = indoc! {
 pub struct Rule03b {}
 
 impl Rule for Rule03b {
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'B',
+            code: "III:B",
+            name: "OperatorSpacing",
+            description: "operators must be spaced correctly",
+        }
+    }
+
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let mut diagnostics = Vec::new();
 
         // Binary expressions
@@ -110,7 +130,7 @@ impl Rule for Rule03b {
             let prev = helper.expect_node_for_capture_index(qmatch, prev_capture_i);
             let op = helper.expect_node_for_capture_index(qmatch, op_capture_i);
             let next = helper.expect_node_for_capture_index(qmatch, next_capture_i);
-            if let Some(diagnostic) = check_binary_op_spacing(op, prev, next, code) {
+            if let Some(diagnostic) = self.check_binary_op_spacing(op, prev, next, filename, code) {
                 diagnostics.push(diagnostic);
             }
         });
@@ -126,10 +146,11 @@ impl Rule for Rule03b {
             // Nodes must be adjacent
             if op.end_byte() != next.start_byte() {
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:B")
-                        .with_message("Expected no space after unary operator")
-                        .with_label(Label::primary((), op.end_byte()..next.start_byte())),
+                    self.report("Expected no space after unary operator").with_violation_parts(
+                        filename,
+                        SourceRange::end_to_start(op, next),
+                        "", // FIXME: empty label is ugly
+                    ),
                 );
             }
         });
@@ -149,10 +170,11 @@ impl Rule for Rule03b {
             // Nodes must be adjacent
             if prev.end_byte() != lbrack.start_byte() {
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:B")
-                        .with_message("Expected no space before array subscript")
-                        .with_label(Label::primary((), prev.end_byte()..lbrack.start_byte())),
+                    self.report("Expected no space before array subscript").with_violation_parts(
+                        filename,
+                        SourceRange::end_to_start(prev, lbrack),
+                        "", // FIXME: empty label is ugly
+                    ),
                 );
             }
         });
@@ -167,7 +189,7 @@ impl Rule for Rule03b {
             let prev = helper.expect_node_for_capture_index(qmatch, prev_capture_i);
             let op = helper.expect_node_for_capture_index(qmatch, op_capture_i);
             let next = helper.expect_node_for_capture_index(qmatch, next_capture_i);
-            if let Some(diagnostic) = check_field_op_spacing(op, prev, next) {
+            if let Some(diagnostic) = self.check_field_op_spacing(op, prev, next, filename) {
                 diagnostics.push(diagnostic);
             }
         });
@@ -176,72 +198,99 @@ impl Rule for Rule03b {
     }
 }
 
-/// Checks the spacing around a binary operator. Returns a [Diagnostic] if the spacing is
-/// incorrect. Otherwise returns [None].
-fn check_binary_op_spacing(
-    op: Node,
-    left: Node,
-    right: Node,
-    code: &str,
-) -> Option<Diagnostic<()>> {
-    // If the adjacent items are on the same line, check that there's a single space between them.
-    // If they're on separate lines, we do nothing, and leave it to Rule II:A to check the
-    // indentation.
-    let left_bad = left.end_position().row == op.start_position().row
-        && !is_single_space_between(left, op, code);
-    let right_bad = op.end_position().row == right.start_position().row
-        && !is_single_space_between(op, right, code);
-    let (message, range) = match (left_bad, right_bad) {
-        (true, true) => (
-            "Expected a single space on each side of binary operator",
-            left.end_byte()..right.start_byte(),
-        ),
-        (true, false) => {
-            ("Expected a single space before binary operator", left.end_byte()..op.end_byte())
-        }
-        (false, true) => (
-            "Expected a single space after binary operator",
-            op.start_byte()..right.start_byte(),
-        ),
-        (false, false) => return None,
-    };
-    Some(
-        Diagnostic::warning()
-            .with_code("III:B")
-            .with_message(message)
-            .with_label(Label::primary((), range)),
-    )
-}
+impl Rule03b {
+    /// Checks the spacing around a binary operator. Returns a [Diagnostic] if the spacing is
+    /// incorrect. Otherwise returns [None].
+    fn check_binary_op_spacing<'a>(
+        &self,
+        op: Node,
+        left: Node,
+        right: Node,
+        filename: &'a str,
+        code: &str,
+    ) -> Option<Diagnostic<'a>> {
+        // If the adjacent items are on the same line, check that there's a single space between them.
+        // If they're on separate lines, we do nothing, and leave it to Rule II:A to check the
+        // indentation.
+        let left_bad = left.end_position().row == op.start_position().row
+            && !is_single_space_between(left, op, code);
+        let right_bad = op.end_position().row == right.start_position().row
+            && !is_single_space_between(op, right, code);
+        let (message, range) = match (left_bad, right_bad) {
+            (true, true) => (
+                "Expected a single space on each side of binary operator",
+                SourceRange {
+                    bytes: left.end_byte()..right.start_byte(),
+                    start_pos: (left.end_position().row, left.end_position().column),
+                    end_pos: (right.start_position().row, right.start_position().column),
+                },
+            ),
+            (true, false) => (
+                "Expected a single space before binary operator",
+                SourceRange {
+                    bytes: left.end_byte()..op.end_byte(),
+                    start_pos: (left.end_position().row, left.end_position().column),
+                    end_pos: (op.end_position().row, op.end_position().column),
+                },
+            ),
+            (false, true) => (
+                "Expected a single space after binary operator",
+                SourceRange {
+                    bytes: op.start_byte()..right.start_byte(),
+                    start_pos: (op.start_position().row, op.start_position().column),
+                    end_pos: (right.start_position().row, right.start_position().column),
+                },
+            ),
+            (false, false) => return None,
+        };
+        // FIXME: empty string is ugly
+        Some(self.report(message).with_violation_parts(filename, range, ""))
+    }
 
-/// Checks the spacing around a field access operator. Returns a [Diagnostic] if the spacing is
-/// incorrect. Otherwise returns [None].
-fn check_field_op_spacing(op: Node, left: Node, right: Node) -> Option<Diagnostic<()>> {
-    // If the adjacent items are on the same line, check that there's a single space between them.
-    // If they're on separate lines, we do nothing, and leave it to Rule II:A to check the
-    // indentation.
-    let left_bad = left.end_byte() != op.start_byte();
-    let right_bad = op.end_byte() != right.start_byte();
-    let (message, range) = match (left_bad, right_bad) {
-        (true, true) => (
-            "Expected no space around field access operator",
-            left.end_byte()..right.start_byte(),
-        ),
-        (true, false) => (
-            "Expected no space before field access operator",
-            left.end_byte()..op.start_byte(),
-        ),
-        (false, true) => (
-            "Expected no space after field access operator",
-            op.end_byte()..right.start_byte(),
-        ),
-        (false, false) => return None,
-    };
-    Some(
-        Diagnostic::warning()
-            .with_code("III:B")
-            .with_message(message)
-            .with_label(Label::primary((), range)),
-    )
+    /// Checks the spacing around a field access operator. Returns a [Diagnostic] if the spacing is
+    /// incorrect. Otherwise returns [None].
+    fn check_field_op_spacing<'a>(
+        &self,
+        op: Node,
+        left: Node,
+        right: Node,
+        filename: &'a str,
+    ) -> Option<Diagnostic<'a>> {
+        // If the adjacent items are on the same line, check that there's a single space between them.
+        // If they're on separate lines, we do nothing, and leave it to Rule II:A to check the
+        // indentation.
+        let left_bad = left.end_byte() != op.start_byte();
+        let right_bad = op.end_byte() != right.start_byte();
+        let (message, range) = match (left_bad, right_bad) {
+            (true, true) => (
+                "Expected no space around field access operator",
+                SourceRange {
+                    bytes: left.end_byte()..right.start_byte(),
+                    start_pos: (left.end_position().row, left.end_position().column),
+                    end_pos: (right.start_position().row, right.start_position().column),
+                },
+            ),
+            (true, false) => (
+                "Expected no space before field access operator",
+                SourceRange {
+                    bytes: left.end_byte()..op.start_byte(),
+                    start_pos: (left.end_position().row, left.end_position().column),
+                    end_pos: (op.start_position().row, op.start_position().column),
+                },
+            ),
+            (false, true) => (
+                "Expected no space after field access operator",
+                SourceRange {
+                    bytes: op.end_byte()..right.start_byte(),
+                    start_pos: (op.end_position().row, op.end_position().column),
+                    end_pos: (right.start_position().row, right.start_position().column),
+                },
+            ),
+            (false, false) => return None,
+        };
+        // FIXME: empty string is ugly
+        Some(self.report(message).with_violation_parts(filename, range, ""))
+    }
 }
 
 /// Returns `true` if there is a single space separating the two nodes, else `false`.
