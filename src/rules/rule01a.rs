@@ -30,9 +30,9 @@
 //! underscores are used to separate words because splitting an identifier into words is
 //! subjective.
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 
+use crate::diagnostic::{Diagnostic, Span};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
@@ -78,7 +78,15 @@ impl Rule for Rule01a {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|_label, capture| {
@@ -90,18 +98,21 @@ impl Rule for Rule01a {
                 "type_definition" => "Type",
                 _ => "Variable",
             };
-            let diagnostic = Diagnostic::warning()
-                .with_message(format!("{nametype} names must be in lower snake case."))
-                .with_code("I:A")
-                .with_label(
-                    Label::primary((), capture.node.byte_range())
-                        .with_message("Name contains uppercase character(s)"),
+            diagnostics.push(
+                Diagnostic::new(
+                    self.describe(),
+                    format!("{nametype} names must be in lower snake case."),
                 )
-                .with_label(Label::secondary((), capture.node.byte_range()).with_message(format!(
-                    "Perhaps you meant `{}'",
+                .with_violation_parts(
+                    filename,
+                    capture.node.into(),
+                    "Name contains uppercase character(s)",
+                )
+                .with_suggestion(format!(
+                    "Perhaps you meant `{}`",
                     guess_lower_snake_case(&code[capture.node.byte_range()])
-                )));
-            diagnostics.push(diagnostic);
+                )),
+            );
         });
         diagnostics
     }

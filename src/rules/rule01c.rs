@@ -38,10 +38,10 @@
 //!   `#define ABC 1 + 2` doesn't. Fixing this will require re-parsing all `preproc_arg` nodes, as
 //!   the current [tree-sitter-c][tree_sitter_c] grammar treats them as literal text.
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::QueryCapture;
 
+use crate::diagnostic::{Diagnostic, Span};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
@@ -80,7 +80,15 @@ impl Rule for Rule01c {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
@@ -103,15 +111,10 @@ impl Rule for Rule01c {
                 ),
                 _ => unreachable!(),
             };
-            let mut diagnostic = Diagnostic::warning()
-                .with_code("I:C")
-                .with_message(message)
-                .with_label(Label::primary((), capture.node.byte_range()).with_message(label));
+            let mut diagnostic =
+                self.report(message).with_violation_parts(filename, capture.node.into(), label);
             if let Some(fix) = fix {
-                diagnostic.labels.push(
-                    Label::secondary((), capture.node.byte_range())
-                        .with_message(format!("Perhaps you meant `{fix}'")),
-                );
+                diagnostic = diagnostic.with_suggestion(format!("Perhaps you meant `{fix}'"));
             }
             diagnostics.push(diagnostic);
         });

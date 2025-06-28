@@ -30,11 +30,11 @@
 //! I interpret that as meaning all declarations/definitions and not just global variable
 //! declarations.
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::QueryCapture;
 
 use crate::{
+    diagnostic::Diagnostic,
     helpers::QueryHelper,
     rules::api::{Rule, SourceInfo},
 };
@@ -79,51 +79,45 @@ impl Rule for Rule01d {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let helper = QueryHelper::new(QUERY_STR, tree, code);
-        let mut first_function_position = None;
+        let mut first_function = None;
         let mut diagnostics = Vec::new();
         helper.for_each_capture(|name: &str, capture: QueryCapture| {
             // For captures that aren't problems, process them as needed and return
             match name {
                 "function" => {
-                    first_function_position = Some(capture.node.byte_range());
+                    first_function = Some(capture.node);
                     return;
                 }
-                "declaration.top_level" if first_function_position.is_some() => (),
+                "declaration.top_level" if first_function.is_some() => (),
                 "declaration.top_level" => return,
                 _ => (),
             }
             let diagnostic = match name {
-                "global.no_g_prefix" => {
-                    let message = "Global variables must be prefixed with `g_'";
-                    Diagnostic::warning()
-                        .with_code("I:D")
-                        .with_message(message)
-                        .with_label(
-                            Label::primary((), capture.node.byte_range())
-                                .with_message("Variable declared here"),
-                        )
-                        .with_label(Label::secondary((), capture.node.byte_range()).with_message(
-                            format!("Perhaps you meant `g_{}'", &code[capture.node.byte_range()]),
-                        ))
-                }
-                "declaration.top_level" => {
-                    let message =
-                        "All top-level declarations must come before function definitions";
-                    Diagnostic::warning()
-                        .with_code("I:D")
-                        .with_message(message)
-                        .with_label(
-                            Label::primary((), capture.node.byte_range())
-                                .with_message("Declaration occurs here"),
-                        )
-                        .with_label(
-                            // SAFETY: We will have returned if first_function_position is None.
-                            Label::secondary((), first_function_position.as_ref().unwrap().clone())
-                                .with_message("First function defined here"),
-                        )
-                }
+                "global.no_g_prefix" => self
+                    .report("Global variables must be prefixed with `g_'")
+                    .with_violation_parts(filename, capture.node.into(), "Variable declared here")
+                    .with_suggestion(format!(
+                        "Perhaps you meant `g_{}'",
+                        &code[capture.node.byte_range()]
+                    )),
+                "declaration.top_level" => self
+                    .report("All top-level declarations must come before function definitions")
+                    .with_violation_parts(filename, capture.node.into(), "Declaration occurs here")
+                    .with_reference_parts(
+                        filename,
+                        first_function.unwrap().into(),
+                        "First function defined here",
+                    ),
                 _ => unreachable!(),
             };
             diagnostics.push(diagnostic);

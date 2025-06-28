@@ -24,10 +24,12 @@
 //!       Example: while (temperature < room_temperature) {
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
+use std::borrow::Cow;
+
 use indoc::indoc;
 use tree_sitter::Node;
 
+use crate::diagnostic::{Diagnostic, SourceRange};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
@@ -102,7 +104,15 @@ impl Rule for Rule03a {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let mut diagnostics = Vec::new();
 
         // Part 1: Space between parentheses and braces
@@ -121,7 +131,8 @@ impl Rule for Rule03a {
                 let lbrace = helper.expect_node_for_capture_index(qmatch, lbrace_capture_i);
                 let message =
                     "Expected a single space between the closing parenthesis and the opening brace";
-                if let Some(diagnostic) = check_single_space_between(rparen, lbrace, code, message)
+                if let Some(diagnostic) =
+                    self.check_single_space_between(rparen, lbrace, filename, code, message)
                 {
                     diagnostics.push(diagnostic);
                 }
@@ -135,7 +146,9 @@ impl Rule for Rule03a {
             let lparen = helper.expect_node_for_capture_index(qmatch, lparen_capture_i);
             let message =
                 format!("Expected a single space after `{}'", &code[keyword.byte_range()]);
-            if let Some(diagnostic) = check_single_space_between(keyword, lparen, code, &message) {
+            if let Some(diagnostic) =
+                self.check_single_space_between(keyword, lparen, filename, code, message)
+            {
                 diagnostics.push(diagnostic);
             }
         });
@@ -143,28 +156,30 @@ impl Rule for Rule03a {
         diagnostics
     }
 }
-
-/// Returns a [Diagnostic] if there is not a single space separating the left and right nodes.
-/// The returned diagnostic will have a message of `message`.
-fn check_single_space_between(
-    left: Node,
-    right: Node,
-    code: &str,
-    message: &str,
-) -> Option<Diagnostic<()>> {
-    if (left.end_byte() + 1) == right.start_byte() {
-        // One byte in between
-        if code.as_bytes()[left.end_byte()] == b' ' {
-            // Valid
-            return None;
+impl Rule03a {
+    /// Returns a [Diagnostic] if there is not a single space separating the left and right nodes.
+    /// The returned diagnostic will have a message of `message`.
+    fn check_single_space_between<'a>(
+        &self,
+        left: Node,
+        right: Node,
+        filename: &'a str,
+        code: &'a str,
+        message: impl Into<Cow<'a, str>>,
+    ) -> Option<Diagnostic<'a>> {
+        if (left.end_byte() + 1) == right.start_byte() {
+            // One byte in between
+            if code.as_bytes()[left.end_byte()] == b' ' {
+                // Valid
+                return None;
+            }
         }
+        Some(Diagnostic::new(self.describe(), message).with_violation_parts(
+            filename,
+            SourceRange::start_to_end(left, right),
+            "", // FIXME: empty string is ugly
+        ))
     }
-    Some(
-        Diagnostic::warning()
-            .with_code("III:A")
-            .with_message(message.to_owned())
-            .with_label(Label::primary((), left.start_byte()..right.end_byte())),
-    )
 }
 
 #[cfg(test)]

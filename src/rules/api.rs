@@ -14,27 +14,32 @@
 
 //! API for [rules][Rule].
 
-use codespan_reporting::diagnostic::Diagnostic;
 use tree_sitter::Tree;
 
-use crate::helpers::LinesWithPosition;
+use crate::{diagnostic::Diagnostic, helpers::LinesWithPosition};
 
 #[derive(Debug, Clone)]
 pub struct SourceInfo<'src> {
+    pub filename: &'src str,
     pub tree: Tree,
     pub code: &'src str,
     pub lines: Box<[(&'src str, usize)]>,
 }
 
 impl<'src> SourceInfo<'src> {
-    pub fn new(code: &'src str) -> Self {
+    pub fn new(filename: &'src str, code: &'src str) -> Self {
         let mut parser = tree_sitter::Parser::new();
         parser
             .set_language(&tree_sitter_c::LANGUAGE.into())
             .expect("Failed to set language");
         let tree = parser.parse(code, None).expect("Failed to parse code");
         let lines = LinesWithPosition::from(code).collect();
-        Self { tree, code, lines }
+        Self {
+            filename,
+            tree,
+            code,
+            lines,
+        }
     }
 }
 
@@ -86,8 +91,15 @@ pub trait Rule {
     /// - `tree`: [`Tree`] representing the file.
     /// - `code`: Text/code of the given file.
     #[must_use]
-    fn check(&self, source: &SourceInfo) -> Vec<Diagnostic<()>>;
+    fn check<'a>(&self, source: &'a SourceInfo) -> Vec<Diagnostic<'a>>;
 
     /// Returns a static description of the rule.
+    #[must_use]
     fn describe(&self) -> &'static RuleDescription;
+
+    /// Creates a new diagnostic with the rule's description and a message.
+    #[must_use]
+    fn report<'a>(&self, message: &'a str) -> Diagnostic<'a> {
+        Diagnostic::new(self.describe(), message)
+    }
 }

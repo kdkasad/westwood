@@ -33,11 +33,11 @@
 //!                     1, special_fp);
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::Range;
-use unicode_width::UnicodeWidthStr;
 
+use crate::diagnostic::{Diagnostic, SourceRange, Span};
+use crate::helpers::line_width;
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
@@ -117,18 +117,32 @@ impl Rule for Rule02a {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            lines,
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let mut diagnostics = Vec::new();
 
         // Check for lines >80 columns long
-        for (line, index) in lines {
+        for (i, &(line, index)) in lines.iter().enumerate() {
             let width = line_width(line);
             if width > 80 {
-                let diagnostic = Diagnostic::warning()
-                    .with_code("II:A")
-                    .with_message("Line length exceeds 80 columns.")
-                    .with_label(Label::primary((), (index + 80)..(index + line.len())));
-                diagnostics.push(diagnostic);
+                diagnostics.push(
+                    self.report("Line length exceeds 80 columns.").with_violation_parts(
+                        filename,
+                        SourceRange {
+                            bytes: (index + 80)..(index + line.len()),
+                            start_pos: (i, 80),
+                            end_pos: (i, index + line.len()),
+                        },
+                        "", // FIXME: empty string is ugly
+                    ),
+                );
             }
         }
 
@@ -167,21 +181,21 @@ impl Rule for Rule02a {
             }
 
             // Check indentation of wrapped lines and construct list of labels
-            let mut code_lines = lines.iter()
+            let mut code_lines = lines.iter().enumerate()
             .skip(range.start_point.row)
             .take(range.end_point.row + 1 - range.start_point.row);
-            let &(first_line, first_line_byte_pos) = code_lines.next().unwrap();
+            let (first_line_index, &(first_line, first_line_byte_pos)) = code_lines.next().unwrap();
             let first_line_indent = get_indentation(first_line);
             let first_line_indent_width = line_width(first_line_indent);
             let expected_indent_width = first_line_indent_width + WRAPPED_LINE_INDENT_WIDTH;
-            let mut labels = Vec::new();
-            for &(this_line, this_line_pos) in &mut code_lines {
+            let mut violations = Vec::new();
+            for (i, &(this_line, this_line_pos)) in code_lines {
                 let this_line_indent = get_indentation(this_line);
                 let this_line_indent_width = line_width(this_line_indent);
                 if this_line_indent_width < expected_indent_width {
-                    labels.push(
-                        Label::primary((), this_line_pos..(this_line_pos + this_line_indent.len()))
-                            .with_message(format!(
+                    violations.push(
+                        Span::new(filename, SourceRange { bytes: this_line_pos..(this_line_pos + this_line_indent.len()), start_pos: (i, 0), end_pos: (i, this_line_indent.len()) },
+                            format!(
                                 "Expected >={expected_indent_width} columns of indentation on continuing line"
                             )),
                     );
@@ -189,39 +203,31 @@ impl Rule for Rule02a {
             }
 
             // If no labels, these lines pass the test
-            if labels.is_empty() {
+            if violations.is_empty() {
                 return;
             }
 
             diagnostics.push(
-                Diagnostic::warning()
-                    .with_code("II:A")
-                    .with_message(format!(
+                Diagnostic::new(self.describe(), format!(
                         "Wrapped expressions/statements must be indented by at least {WRAPPED_LINE_INDENT_WIDTH} spaces",
                     ))
-                    .with_labels(labels)
-                    .with_label(
-                        Label::secondary(
-                            (),
-                            first_line_byte_pos..(first_line_byte_pos + first_line_indent.len()),
-                        )
-                        .with_message(format!(
+                    .with_violations(violations)
+                    .with_reference_parts(
+                        filename,
+                        SourceRange {
+                            bytes: first_line_byte_pos..(first_line_byte_pos + first_line_indent.len()),
+                            start_pos: (first_line_index, 0),
+                            end_pos: (first_line_index, first_line_indent.len()),
+                        },
+                        format!(
                             "Found indentation of {first_line_indent_width} columns on initial line",
-                        )),
+                        )
                     ),
             );
         });
 
         diagnostics
     }
-}
-
-/// Returns the width of a line in columns.
-///
-/// Returns the width according to the [`unicode_width`] module, but with tab characters (U+0009 or
-/// `'\t'`) treated as 8 columns wide.
-fn line_width(line: &str) -> usize {
-    line.width() + line.chars().filter(|c| *c == '\t').count() * 7
 }
 
 /// Returns the leading whitespace part of the line
@@ -242,28 +248,6 @@ mod tests {
     };
 
     use super::{Rule02a, QUERY_STR};
-
-    #[test]
-    fn line_width() {
-        let tests = [
-            ("", 0),
-            ("\t", 8),
-            ("\t\t", 16),
-            ("\tint x;", 14),
-            (
-                "static void read_line(const char *restrict, char *restrict, size_t);",
-                68,
-            ),
-            (
-                "static void read_line(const char *restrict prompt, char *restrict buffer, size_t buffer_size);",
-                94,
-            ),
-            ("int 😵 = 5;", 11),
-        ];
-        for (line, expected) in tests {
-            assert_eq!(expected, super::line_width(line));
-        }
-    }
 
     #[test]
     fn test_rule02a_captures() -> ExitCode {
@@ -344,19 +328,22 @@ mod tests {
                 }
                 code.push_str("}\n");
                 dbg!(&code);
-                let source = SourceInfo::new(&code);
+                let source = SourceInfo::new("", &code);
                 let diagnostics = rule.check(&source);
                 assert_eq!($ndiag, diagnostics.len());
                 let nlabels_list: &[usize] = &$nlabels_list;
                 assert_eq!(
                     nlabels_list,
-                    &diagnostics.iter().map(|diag| diag.labels.len()).collect::<Vec<usize>>()
+                    &diagnostics
+                        .iter()
+                        .map(|diag| diag.violations.len() + diag.references.len())
+                        .collect::<Vec<usize>>()
                 );
             };
         }
 
         // Each test takes the code, number of expected diagnostics, and total number of expected
-        // labels
+        // spans
 
         test!("int x = 0;", 0, []);
         test!("int x =\n  0;", 0, []);

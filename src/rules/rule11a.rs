@@ -131,7 +131,7 @@ mod tests {
     fn all_tabs() {
         let code = "#include <stdio.h>\nint main() {\n\t\tprintf(\"Hello, world!\\n\");\n\t\treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
     }
@@ -141,7 +141,7 @@ mod tests {
     fn mix_tabs_spaces() {
         let code = "#include <stdio.h>\nint main() {\n  \tprintf(\"Hello, world!\\n\");\n  \treturn 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert_eq!(2, diagnostics.len());
         assert!(diagnostics.iter().all(|diag| diag.labels.len() == 1));
         assert!(diagnostics.iter().all(|diag| diag.notes.len() == 1));
@@ -153,7 +153,7 @@ mod tests {
         let code =
             "#include <stdio.h>\nint main() {\n  printf(\"Hello, world!\\n\");\n  return 0;\n}\n";
         let rule = super::Rule11a::new(None);
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert!(diagnostics.is_empty());
     }
 }

@@ -22,10 +22,10 @@
 //!       Example: printf("%f %f %f\n", temperature, volume, area);
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::Node;
 
+use crate::diagnostic::{Diagnostic, SourceRange};
 use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
@@ -77,7 +77,15 @@ impl Rule for Rule03c {
         }
     }
 
-    fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename,
+            tree,
+            code,
+            ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let mut diagnostics = Vec::new();
         let helper = QueryHelper::new(QUERY_STR, tree, code);
         let delim_capture_i = helper.expect_index_for_capture("delim");
@@ -93,10 +101,19 @@ impl Rule for Rule03c {
 
             if !is_single_space_between(delim, next, code) {
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:C")
-                        .with_message("Expected one space after internal commas and semicolons")
-                        .with_label(Label::primary((), delim.start_byte()..next.start_byte())),
+                    self.report("Expected one space after internal commas and semicolons")
+                        .with_violation_parts(
+                            filename,
+                            SourceRange {
+                                bytes: delim.start_byte()..next.start_byte(),
+                                start_pos: (
+                                    delim.start_position().row,
+                                    delim.start_position().column,
+                                ),
+                                end_pos: (next.start_position().row, next.start_position().column),
+                            },
+                            "",
+                        ),
                 );
             }
         });
