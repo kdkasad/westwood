@@ -153,12 +153,13 @@ checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
 name = "crashlog"
-version = "0.1.4"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da2f099cf260255812b1484ff022f6dab60fc583ada21809a6dda223e46551cb"
 dependencies = [
  "chrono",
  "fastrand",
  "os_info",
- "pretty_assertions",
 ]
 
 [[package]]
