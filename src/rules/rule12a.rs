@@ -37,6 +37,8 @@ use crate::{helpers::QueryHelper, rules::api::Rule};
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// # Rule XII:A.
 ///
 /// See module-level documentation for details.
@@ -64,6 +66,16 @@ const QUERY_STR: &str = indoc! {
 };
 
 impl Rule for Rule12a {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 12,
+            letter: 'A',
+            code: "XII:A",
+            name: "MultipleDefinitions",
+            description: "at most one variable may be defined on a single line",
+        }
+    }
+
     fn check(&self, SourceInfo { tree, code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 

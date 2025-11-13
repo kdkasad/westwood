@@ -354,6 +354,15 @@ impl<I: Iterator<Item = Range>> Iterator for RangeCollapser<I> {
     }
 }
 
+/// Returns the width of a line in columns.
+///
+/// Returns the width according to the [`unicode_width`] module, but with tab characters (U+0009 or
+/// `'\t'`) treated as 8 columns wide.
+pub fn line_width(line: &str) -> usize {
+    use unicode_width::UnicodeWidthStr;
+    line.width() + line.chars().filter(|c| *c == '\t').count() * 7
+}
+
 #[cfg(test)]
 mod test {
     use std::process::ExitCode;
@@ -363,6 +372,28 @@ mod test {
     use indoc::indoc;
     use pretty_assertions::assert_eq;
     use tree_sitter::{Parser, Range};
+
+    #[test]
+    fn line_width() {
+        let tests = [
+            ("", 0),
+            ("\t", 8),
+            ("\t\t", 16),
+            ("\tint x;", 14),
+            (
+                "static void read_line(const char *restrict, char *restrict, size_t);",
+                68,
+            ),
+            (
+                "static void read_line(const char *restrict prompt, char *restrict buffer, size_t buffer_size);",
+                94,
+            ),
+            ("int 😵 = 5;", 11),
+        ];
+        for (line, expected) in tests {
+            assert_eq!(expected, super::line_width(line));
+        }
+    }
 
     #[test]
     /// Test the `#has-ancestor?` custom predicate.

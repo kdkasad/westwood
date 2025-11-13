@@ -26,6 +26,8 @@ use crate::rules::api::Rule;
 
 use crate::rules::api::SourceInfo;
 
+use super::api::RuleDescription;
+
 /// # Rule XI:B.
 ///
 /// See module-level documentation for details.
@@ -45,6 +47,16 @@ impl Rule11b {
 }
 
 impl Rule for Rule11b {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 11,
+            letter: 'B',
+            code: "XI:B",
+            name: "NoCRLF",
+            description: "do not use DOS-style newlines (\\r\\n)",
+        }
+    }
+
     fn check(&self, SourceInfo { code, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
         let mut diagnostics = Vec::new();
 
@@ -108,7 +120,7 @@ mod tests {
     fn has_crlf() {
         let code = "int main() {\r\n  return 0;\r\n}\r\n";
         let rule = super::Rule11b::new(None);
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert_eq!(3, diagnostics.len());
         let cr_positions: Vec<usize> = code
             .char_indices()
@@ -126,7 +138,7 @@ mod tests {
     fn no_crlf() {
         let code = "int main() {\n  return 0;\n}\n";
         let rule = super::Rule11b::new(None);
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert!(diagnostics.is_empty());
     }
 
@@ -135,7 +147,7 @@ mod tests {
     fn limit() {
         let code = "int main() {\r\n  return 0;\r\n}\r\n";
         let rule = super::Rule11b::new(Some(NonZeroUsize::new(1).unwrap()));
-        let diagnostics = rule.check(&SourceInfo::new(code));
+        let diagnostics = rule.check(&SourceInfo::new("", code));
         assert_eq!(1, diagnostics.len());
         assert_eq!(2, diagnostics[0].notes.len());
         // First note is Vim tip; second is remaining warnings.

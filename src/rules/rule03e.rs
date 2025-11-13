@@ -18,11 +18,14 @@
 //!    C. Never put trailing whitespace at the end of a line.
 //! ```
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
-
+use crate::diagnostic::Diagnostic;
+use crate::diagnostic::SourceRange;
+use crate::helpers::line_width;
 use crate::rules::api::Rule;
 
 use crate::rules::api::SourceInfo;
+
+use super::api::RuleDescription;
 
 /// # Rule III:E.
 ///
@@ -30,19 +33,39 @@ use crate::rules::api::SourceInfo;
 pub struct Rule03e {}
 
 impl Rule for Rule03e {
-    fn check(&self, SourceInfo { lines, .. }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'E',
+            code: "III:E",
+            name: "TrailingWhitespace",
+            description: "lines must not have trailing whitespace",
+        }
+    }
+
+    fn check<'a>(
+        &self,
+        SourceInfo {
+            filename, lines, ..
+        }: &'a SourceInfo,
+    ) -> Vec<Diagnostic<'a>> {
         let mut diagnostics = Vec::new();
-        for (line, index) in lines {
+        for &(line, index) in lines {
             let trimmed_line = line.trim_end();
             if trimmed_line.len() != line.len() {
                 // Start/end of trailing whitespace
                 let start = index + trimmed_line.len();
                 let end = index + line.len();
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:E")
-                        .with_message("Line contains trailing whitespace")
-                        .with_label(Label::primary((), start..end)),
+                    self.report("Line contains trailing whitespace").with_violation_parts(
+                        filename,
+                        SourceRange {
+                            bytes: start..end,
+                            start_pos: (index, line_width(trimmed_line)),
+                            end_pos: (index, line_width(line)),
+                        },
+                        "",
+                    ),
                 );
             }
         }
@@ -61,7 +84,7 @@ mod tests {
     #[test]
     fn rule03e() {
         let code = "int main() { \n  return 0;\t\n}\n";
-        let source = SourceInfo::new(code);
+        let source = SourceInfo::new("", code);
         let rule = Rule03e {};
         let diagnostics = rule.check(&source);
         assert_eq!(2, diagnostics.len());

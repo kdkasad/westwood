@@ -43,16 +43,18 @@
 
 use std::ops::Range;
 
-use codespan_reporting::diagnostic::{Diagnostic, Label};
 use indoc::indoc;
 use tree_sitter::{Node, Range as TSRange};
 
 use crate::{
-    helpers::{function_definition_name, QueryHelper, RangeCollapser},
+    diagnostic::{Diagnostic, SourceRange, Span},
+    helpers::{function_definition_name, line_width, QueryHelper, RangeCollapser},
     rules::api::Rule,
 };
 
 use crate::rules::api::SourceInfo;
+
+use super::api::RuleDescription;
 
 /// Tree-sitter query for Rule III:D.
 const QUERY_STR: &str = indoc! {
@@ -75,7 +77,23 @@ const QUERY_STR: &str = indoc! {
 pub struct Rule03d {}
 
 impl Rule for Rule03d {
-    fn check(&self, SourceInfo { tree, code, lines }: &SourceInfo) -> Vec<Diagnostic<()>> {
+    fn describe(&self) -> &'static RuleDescription {
+        &RuleDescription {
+            group_number: 3,
+            letter: 'D',
+            code: "III:D",
+            name: "PreprocessorDefinitionLocationSpacing",
+            description: "#defines must be grouped together between blank lines",
+        }
+    }
+
+    fn check<'a>(&self, source: &'a SourceInfo) -> Vec<Diagnostic<'a>> {
+        let SourceInfo {
+            filename,
+            tree,
+            code,
+            lines,
+        } = source;
         // List of function definition bodies
         let mut function_bodies: Vec<Node> = Vec::new();
         // List of #define statements
@@ -115,15 +133,12 @@ impl Rule for Rule03d {
                 let print_range =
                     range_without_trailing_eol(group.start_byte..group.end_byte, code);
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:D")
-                        .with_message("Global preprocessor definitions must be placed at the top of the file, before all functions")
-                        .with_label(
-                            Label::primary((), print_range).with_message("Macro(s) defined here")
+                    self.report("Global preprocessor definitions must be placed at the top of the file, before all functions")
+                        .with_violation_parts(
+                            filename, SourceRange::from_byte_range(print_range, source), "Macro(s) defined here"
                         )
-                        .with_label(
-                            // SAFETY: We've already checked that first_func.is_some_and(...).
-                            Label::secondary((), first_func.unwrap().byte_range()).with_message("First function defined here")
+                        .with_reference_parts(
+                            filename, first_func.unwrap().into(), "First function defined here"
                         )
                 );
             }
@@ -132,22 +147,36 @@ impl Rule for Rule03d {
         // Check that global #define statements are grouped together
         if global_define_groups.len() > 1 {
             diagnostics.push(
-                Diagnostic::warning()
-                    .with_code("III:D")
-                    .with_message("All top-level #define statements must be grouped together")
-                    .with_labels_iter(global_define_groups.into_iter().enumerate().map(
-                        |(i, group)| {
-                            let range =
-                                range_without_trailing_eol(group.start_byte..group.end_byte, code);
-                            if i == 0 {
-                                Label::secondary((), range)
-                                    .with_message("First group of #define statements found here")
-                            } else {
-                                Label::primary((), range)
-                                    .with_message("More #define statements found here")
-                            }
-                        },
-                    )),
+                self.report("All top-level #define statements must be grouped together")
+                    .with_reference_parts(
+                        filename,
+                        SourceRange::from_byte_range(
+                            range_without_trailing_eol(
+                                global_define_groups[0].start_byte
+                                    ..global_define_groups[0].end_byte,
+                                code,
+                            ),
+                            source,
+                        ),
+                        "First group of #define statements found here",
+                    )
+                    .with_violations(
+                        global_define_groups
+                            .iter()
+                            .skip(1)
+                            .map(|group| {
+                                let range = range_without_trailing_eol(
+                                    group.start_byte..group.end_byte,
+                                    code,
+                                );
+                                Span::new(
+                                    filename,
+                                    SourceRange::from_byte_range(range, source),
+                                    "More #define statements found here",
+                                )
+                            })
+                            .collect(),
+                    ),
             );
         }
 
@@ -165,27 +194,45 @@ impl Rule for Rule03d {
                 let function_def =
                     function.parent().expect("Expected function body to have a parent");
                 let function_name = function_definition_name(function_def, code);
+                let function_decl = function_def
+                    .child_by_field_name("declarator")
+                    .expect("Expected function definition to have a declarator");
                 diagnostics.push(
-                    Diagnostic::warning()
-                        .with_code("III:D")
-                        .with_message(
-                            "All #define statements in each function must be grouped together",
+                    self.report("All #define statements in each function must be grouped together")
+                        .with_reference_parts(
+                            filename,
+                            function_decl.into(),
+                            format!("In function `{function_name}()'"),
                         )
-                        .with_notes(vec![format!("In function `{}()'", function_name)])
-                        .with_labels_iter(groups_in_function.into_iter().enumerate().map(
-                            |(i, define_group)| {
-                                let range = define_group.start_byte..define_group.end_byte;
-                                let print_range = range_without_trailing_eol(range, code);
-                                if i == 0 {
-                                    Label::secondary((), print_range).with_message(
-                                        "First group of #define statements found here",
+                        .with_reference_parts(
+                            filename,
+                            SourceRange::from_byte_range(
+                                range_without_trailing_eol(
+                                    groups_in_function[0].start_byte
+                                        ..groups_in_function[0].end_byte,
+                                    code,
+                                ),
+                                source,
+                            ),
+                            "First group of #define statements found here",
+                        )
+                        .with_violations(
+                            groups_in_function
+                                .iter()
+                                .skip(1)
+                                .map(|define_group| {
+                                    let range = range_without_trailing_eol(
+                                        define_group.start_byte..define_group.end_byte,
+                                        code,
+                                    );
+                                    Span::new(
+                                        filename,
+                                        SourceRange::from_byte_range(range, source),
+                                        "More #define statements found here",
                                     )
-                                } else {
-                                    Label::primary((), print_range)
-                                        .with_message("More #define statements found here")
-                                }
-                            },
-                        )),
+                                })
+                                .collect(),
+                        ),
                 );
             }
         }
@@ -236,13 +283,16 @@ impl Rule for Rule03d {
                 // Missing blank line before only.
                 (false, true) => {
                     diagnostics.push(
-                        Diagnostic::warning()
-                            .with_code("III:D")
-                            .with_message("Expected blank line before #define statement(s)")
-                            .with_label(Label::primary((), print_range.clone()))
-                            .with_label(
-                                Label::secondary((), prev_line_range.unwrap())
-                                    .with_message("Previous line is non-blank"),
+                        self.report("Expected blank line before #define statement(s)")
+                            .with_violation_parts(
+                                filename,
+                                SourceRange::from_byte_range(print_range.clone(), source),
+                                "",
+                            )
+                            .with_reference_parts(
+                                filename,
+                                SourceRange::from_byte_range(prev_line_range.unwrap(), source),
+                                "Previous line is non-blank",
                             ),
                     );
                 }
@@ -250,13 +300,16 @@ impl Rule for Rule03d {
                 // Missing blank line after only.
                 (true, false) => {
                     diagnostics.push(
-                        Diagnostic::warning()
-                            .with_code("III:D")
-                            .with_message("Expected blank line after #define statement(s)")
-                            .with_label(Label::primary((), print_range))
-                            .with_label(
-                                Label::secondary((), next_line_range.unwrap())
-                                    .with_message("Next line is non-blank"),
+                        self.report("Expected blank line after #define statement(s)")
+                            .with_violation_parts(
+                                filename,
+                                SourceRange::from_byte_range(print_range.clone(), source),
+                                "",
+                            )
+                            .with_reference_parts(
+                                filename,
+                                SourceRange::from_byte_range(next_line_range.unwrap(), source),
+                                "Next line is non-blank",
                             ),
                     );
                 }
@@ -264,17 +317,21 @@ impl Rule for Rule03d {
                 // Missing blank lines before and after.
                 (false, false) => {
                     diagnostics.push(
-                        Diagnostic::warning()
-                            .with_code("III:D")
-                            .with_message("Expected blank lines surrounding #define statement(s)")
-                            .with_label(Label::primary((), print_range))
-                            .with_label(
-                                Label::secondary((), prev_line_range.unwrap())
-                                    .with_message("Previous line is non-blank"),
+                        self.report("Expected blank lines surrounding #define statement(s)")
+                            .with_violation_parts(
+                                filename,
+                                SourceRange::from_byte_range(print_range, source),
+                                "",
                             )
-                            .with_label(
-                                Label::secondary((), next_line_range.unwrap())
-                                    .with_message("Next line is non-blank"),
+                            .with_reference_parts(
+                                filename,
+                                SourceRange::from_byte_range(prev_line_range.unwrap(), source),
+                                "Previous line is non-blank",
+                            )
+                            .with_reference_parts(
+                                filename,
+                                SourceRange::from_byte_range(next_line_range.unwrap(), source),
+                                "Next line is non-blank",
                             ),
                     );
                 }
@@ -320,7 +377,7 @@ mod tests {
             "
         };
         let rule = Rule03d {};
-        let source = SourceInfo::new(code);
+        let source = SourceInfo::new("", code);
         let diagnostics = rule.check(&source);
         // Expect 1 diagnostic for the whole group.
         assert_eq!(1, diagnostics.len());
@@ -331,11 +388,14 @@ mod tests {
     #[test]
     fn no_eol() {
         let code = "// comment\n#define A";
-        let source = SourceInfo::new(code);
+        let source = SourceInfo::new("", code);
         let rule = Rule03d {};
         let diagnostics = rule.check(&source);
         assert_eq!(1, diagnostics.len());
-        assert_eq!(code.lines().last().unwrap(), &code[diagnostics[0].labels[0].range.clone()]);
+        assert_eq!(
+            code.lines().last().unwrap(),
+            &code[diagnostics[0].violations[0].range.bytes.clone()]
+        );
     }
 
     /// Ensures that the logic for blank line checking does not fail if there is no line before or
@@ -343,7 +403,7 @@ mod tests {
     #[test]
     fn file_start_end() {
         let code = "#define A\n";
-        let source = SourceInfo::new(code);
+        let source = SourceInfo::new("", code);
         let rule = Rule03d {};
         let diagnostics = rule.check(&source);
         assert!(diagnostics.is_empty());
@@ -355,14 +415,14 @@ mod tests {
     fn crlf() {
         let code = "/* comment */\r\n#define A 1\r\n";
         let rule = Rule03d {};
-        let source = SourceInfo::new(code);
+        let source = SourceInfo::new("", code);
         let diagnostics = rule.check(&source);
         // Sanity checks
         assert_eq!(1, diagnostics.len());
-        assert_eq!(LabelStyle::Primary, diagnostics[0].labels[0].style);
+        assert_eq!(1, diagnostics[0].violations.len());
         // str::lines() excludes the CRLF.
         let expected_line = code.lines().nth(1).unwrap();
-        let actual_line = &code[diagnostics[0].labels[0].range.clone()];
+        let actual_line = &code[diagnostics[0].violations[0].range.bytes.clone()];
         assert_eq!(expected_line, actual_line);
     }
 }
